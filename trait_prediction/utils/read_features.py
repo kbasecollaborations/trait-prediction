@@ -22,7 +22,9 @@ def read_rast_features(
     dict[str, str]
         Dictionary mapping the rast subsystem ontology (SSO) to the full name.
     """
-    rast_df = pd.read_csv(rast_feature_file, sep="\t", index_col=0)
+    rast_df = (
+        pd.read_csv(rast_feature_file, sep="\t", index_col=0).fillna(0).astype(int)
+    )
     rast_annotations = list(rast_df.columns)
     rast_sso_dict = {x.split("__")[0]: x.split("__", 1)[-1] for x in rast_annotations}
     rast_sso = list(rast_sso_dict.keys())
@@ -48,7 +50,9 @@ def read_interpro_features(
     dict[str, str]
         Dictionary mapping the interpro ontology (IPR) to the full name.
     """
-    interpro_df = pd.read_csv(interpro_feature_file, sep="\t", index_col=0)
+    interpro_df = (
+        pd.read_csv(interpro_feature_file, sep="\t", index_col=0).fillna(0).astype(int)
+    )
     interpro_annotations = list(interpro_df.columns)
     interpro_sso_dict = {
         x.split("__")[0]: x.split("__", 1)[-1] for x in interpro_annotations
