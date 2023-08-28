@@ -25,8 +25,17 @@ def read_phenotype_data(phenotype_data_path: pathlib.Path) -> list[Phenotype]:
     phenotype_df = raw_phenotype_df.select_dtypes(include="number")
     phenotypes = []
     for col in phenotype_df.columns:
-        name, category = col.split("--")
-        if not category:
-            category = "unknown"
+        try:
+            name, category = col.split("--")
+            if not category:
+                category = "unknown"
+        except ValueError:
+            if col.startswith("Unnamed"):
+                num = col.rsplit(" ", 1)[-1]
+                name = f"unnamed_{num}"
+                category = "unknown"
+            else:
+                name = col
+                category = "unknown"
         phenotypes.append(Phenotype(phenotype_df[col], name, category))
     return phenotypes

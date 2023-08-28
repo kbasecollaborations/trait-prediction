@@ -54,9 +54,9 @@ def read_interpro_features(
         pd.read_csv(interpro_feature_file, sep="\t", index_col=0).fillna(0).astype(int)
     )
     interpro_annotations = list(interpro_df.columns)
-    interpro_sso_dict = {
+    interpro_ipr_dict = {
         x.split("__")[0]: x.split("__", 1)[-1] for x in interpro_annotations
     }
-    interpro_sso = list(interpro_sso_dict.keys())
-    interpro_df.columns = interpro_sso
-    return interpro_df, interpro_sso_dict
+    interpro_ipr = list(interpro_ipr_dict.keys())
+    interpro_df.columns = interpro_ipr
+    return interpro_df, interpro_ipr_dict

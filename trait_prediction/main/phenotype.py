@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from feature_selection.reduction import (
+from ..feature_selection.reduction import (
     remove_features_with_high_correlation,
     remove_features_with_low_variance,
 )
@@ -74,8 +74,15 @@ class Phenotype:
         feature_type : str
             Type of the feature data.
         """
-        if self.feature_data is not None:
-            self.feature_data = raw_feature_data.loc[self.phenotype_data.index, :]
+        if self.feature_data is None:
+            common_genomes = sorted(
+                list(
+                    set(self.phenotype_data.index).intersection(
+                        set(raw_feature_data.index)
+                    )
+                )
+            )
+            self.feature_data = raw_feature_data.loc[common_genomes, :]
             self.feature_type = feature_type
         else:
             raise ValueError("Feature data already set for this phenotype")
