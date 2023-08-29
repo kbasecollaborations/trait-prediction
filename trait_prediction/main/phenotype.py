@@ -62,7 +62,7 @@ class Phenotype:
         return raw_phenotype_data.dropna()
 
     def set_feature_data(
-        self, raw_feature_data: pd.DataFrame, feature_type: str
+        self, raw_feature_data: pd.DataFrame, feature_type: str, force: bool = False
     ) -> None:
         """
         Sets the feature data for this phenotype.
@@ -73,8 +73,11 @@ class Phenotype:
             Pandas DataFrame containing the feature data.
         feature_type : str
             Type of the feature data.
+        force : bool
+            If True, the feature data will be set even if it was already set.
+            Default value is False
         """
-        if self.feature_data is None:
+        if self.feature_data is None or force:
             common_genomes = sorted(
                 list(
                     set(self.phenotype_data.index).intersection(
@@ -118,6 +121,7 @@ class Phenotype:
                 fd_high_var_low_corr,
                 corr_group_dict,
             ) = remove_features_with_high_correlation(fd_high_var, correlation_treshold)
+            self.feature_data = fd_high_var_low_corr
         else:
             raise ValueError("Feature data not set for this phenotype")
         return low_var_features, corr_group_dict

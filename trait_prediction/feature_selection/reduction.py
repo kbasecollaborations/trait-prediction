@@ -3,6 +3,8 @@
 import numpy as np
 import pandas as pd
 
+# NOTE: Consider SelectKBest together with chi2/f_classif/mutual_info_classif for a more robust feature selection
+
 
 def remove_features_with_low_variance(
     feature_df: pd.DataFrame, threshold: float = 0.05
@@ -16,6 +18,7 @@ def remove_features_with_low_variance(
         Pandas DataFrame containing the features.
     threshold : float
         Threshold for the variance of the features.
+        Default value is 0.05 which removes features with more than 95% of the values being the same.
 
     Returns
     ------
@@ -41,6 +44,7 @@ def remove_features_with_high_correlation(
         Pandas DataFrame containing the features.
     threshold : float
         Threshold for the correlation of the features.
+        Default value is 0.95
 
     Returns
     ------
@@ -56,6 +60,7 @@ def remove_features_with_high_correlation(
     for col in upper.columns:
         corr_filter = upper[col] > threshold
         correlated_cols = list(upper.columns[corr_filter])
-        corr_group_dict[col] = correlated_cols
-        cols_to_drop_set.add(col)
+        if len(correlated_cols) > 0:
+            corr_group_dict[col] = correlated_cols
+            cols_to_drop_set.add(col)
     return feature_df.drop(list(cols_to_drop_set), axis=1), corr_group_dict
