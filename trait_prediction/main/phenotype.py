@@ -59,7 +59,12 @@ class Phenotype:
         if self._common_genomes is None:
             return self._phenotype_data
         else:
-            return self._phenotype_data.loc[self._common_genomes, :].copy()
+            return (
+                self._phenotype_data.loc[self._common_genomes]
+                .dropna()
+                .astype(int)
+                .copy()
+            )
 
     def _parse_phenotype_data(self, raw_phenotype_data: pd.Series) -> pd.Series:
         """
@@ -117,7 +122,7 @@ class Phenotype:
         if self._feature_data is None:
             raise ValueError("Feature data not set for this phenotype")
         else:
-            return self._feature_data.copy()
+            return self._feature_data.dropna().astype(int).copy()
 
     def unset_feature_data(self) -> None:
         """
