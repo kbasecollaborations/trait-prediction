@@ -150,9 +150,9 @@ class Phenotype:
             Dictionary of the features with high correlation that were removed
 
         """
-        if self.feature_data is not None:
+        if self._feature_data is not None:
             fd_high_var, low_var_features = remove_features_with_low_variance(
-                self.feature_data, variance_threshold
+                self._feature_data, variance_threshold
             )
             (
                 fd_high_var_low_corr,
