@@ -1,0 +1,183 @@
+"""Module that defines the PhenotypePredictor class."""
+
+from typing import Optional, Union
+
+import pandas as pd
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.over_sampling import RandomOverSampler
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+)
+from sklearn.model_selection import train_test_split
+
+from ..main import Phenotype
+
+# TODO:
+# PhenotypePredictor(phenotype: Phenotype, Clf: any) -> None:
+# train_test_split using imblearn (check class ratio)
+# How to get this class to work with various different classifiers?
+# optuna
+
+
+class PhenotypePredictor:
+    """
+    Perform machine learning on Phenotype class and visualize the results.
+
+    Parameters
+    ---------
+    phenotype : Phenotype
+        Phenotype class containing the data for one phenotype.
+    classifier : any
+        Classifier used for the machine learning.
+    random_state : Optional[int]
+        Random state for the machine learning.
+
+    Attributes
+    ---------
+    phenotype : Phenotype
+        Phenotype class containing the data for one phenotype.
+    classifier : any
+        Classifier used for the machine learning.
+    random_state : Optional[int]
+        Random state for the machine learning.
+    data : dict[str, Union[pd.DataFrame, pd.Series]]
+        Dictionary containing the data for the machine learning.
+    """
+
+    def __init__(
+        self, phenotype: Phenotype, classifier, random_state: Optional[int] = None
+    ) -> None:
+        self.phenotype = phenotype
+        self.clasifier = classifier
+        self.random_state = random_state
+        if phenotype.feature_data is None:
+            raise ValueError(
+                "Phenotype does not contain feature data. Attach feature data using `phenotype.set_feature_data`."
+            )
+        self._X = self.phenotype.feature_data
+        self._y = self.phenotype.phenotype_data
+        self._data_prep = False
+
+    @property
+    def data(self) -> dict[str, Union[pd.DataFrame, pd.Series]]:
+        """Dictionary containing the data for the machine learning."""
+        if self._data_prep:
+            return {
+                "X_train": self._X_train.copy(),
+                "X_test": self._X_test.copy(),
+                "y_train": self._y_train.copy(),
+                "y_test": self._y_test.copy(),
+            }
+        else:
+            raise ValueError("Data has not been prepared. Call `split_data` first.")
+
+    def split_data(
+        self,
+        test_size: float = 0.3,
+        stratify: bool = True,
+        imbalanced: Optional[str] = "auto",
+    ) -> dict[str, Union[pd.DataFrame, pd.Series]]:
+        """
+        Split the data into train and test sets using `train_test_split`.
+
+        Parameters
+        ---------
+        test_size : float
+            Size of the test set.
+            Default value is 0.3.
+        stratify : bool
+            Whether to stratify the data.
+            Default value is True.
+        imbalanced : Optional[str], {'auto', 'undersample', 'oversample'}
+            Whether to use imbalanced data.
+            Default value is 'auto'.
+
+        Returns
+        ------
+        dict[str, Union[pd.DataFrame, pd.Series]]
+            Dictionary containing the data for the machine learning.
+        """
+        if stratify:
+            y_stratify = self._y
+        else:
+            y_stratify = None
+        self._X_train, self._X_test, self._y_train, self._y_test = train_test_split(
+            self._X,
+            self._y,
+            test_size=test_size,
+            random_state=self.random_state,
+            stratify=y_stratify,
+        )
+        if imbalanced is not None:
+            if imbalanced == "auto":
+                from collections import Counter
+
+                counter = Counter(self._y)
+                majority_class_count = counter.most_common()[0][1]
+                minority_class_count = counter.most_common()[-1][1]
+                class_ratio = minority_class_count / majority_class_count
+                # perform sampling if class_ratio is less than 0.1
+                if class_ratio <= 0.1:
+                    # if minority_class_count has less than 100 data points
+                    if minority_class_count < 100:
+                        # then we have a small minority class so we do oversampling
+                        self._sampler = RandomOverSampler(
+                            random_state=self.random_state
+                        )
+                    else:
+                        self._sampler = RandomUnderSampler(
+                            random_state=self.random_state
+                        )
+            elif imbalanced == "undersample":
+                # NOTE: this removes samples from the majority class
+                self._sampler = RandomUnderSampler(random_state=self.random_state)
+            elif imbalanced == "oversample":
+                # NOTE: this adds samples to the minority class (random sample with replacement)
+                self._sampler = RandomOverSampler(random_state=self.random_state)
+            else:
+                raise ValueError(
+                    "imbalanced must be 'auto', 'undersample', or 'oversample'."
+                )
+            self._X_train, self._y_train = self._sampler.fit_resample(  # type: ignore
+                self._X_train, self._y_train
+            )
+        self._data_prep = True
+        self._sampling_params = {
+            "test_size": test_size,
+            "stratify": stratify,
+            "imbalanced_sampling": imbalanced,
+        }
+        return self.data
+
+    def fit(self) -> None:
+        """Fit the classifier to the training data."""
+        if self._data_prep:
+            self.clasifier.fit(self._X_train, self._y_train)
+        else:
+            raise ValueError("Data has not been prepared. Call `split_data` first.")
+
+    def predict(self, X: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+        """
+        Predict the phenotype of the given feature data.
+
+        Parameters
+        ---------
+        X : Optional[pd.DataFrame]
+            Pandas DataFrame containing the feature data.
+            Default value is None.
+            If None, then self._y_test is used.
+
+        Returns
+        ------
+        pd.DataFrame
+            Pandas DataFrame containing the predicted phenotype.
+        """
+        if X is not None:
+            y_pred = self.clasifier.predict(X)
+        else:
+            y_pred = self.clasifier.predict(self._X_test)
+        return y_pred
