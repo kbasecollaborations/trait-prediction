@@ -1,6 +1,7 @@
 """Module that defines the Phenotype class"""
 
 from typing import Union
+import pickle
 
 import pandas as pd
 
@@ -46,7 +47,11 @@ class Phenotype:
         self._common_genomes: Union[None, list[str]] = None
 
     def __repr__(self) -> str:
-        return f"Phenotype(name={self.name}, category={self.category}, size={self.phenotype_data.shape})"
+        if self._common_genomes is None:
+            size = self._phenotype_data.shape[0]
+        else:
+            size = len(self._common_genomes)
+        return f"Phenotype (name={self.name}, category={self.category}, size={size})"
 
     @property
     def phenotype_data(self) -> pd.Series:
@@ -157,3 +162,49 @@ class Phenotype:
         else:
             raise ValueError("Feature data not set for this phenotype")
         return low_var_features, corr_group_dict
+
+    def save(self, file_path: str) -> None:
+        """
+        Saves the phenotype data to the given path.
+
+        Parameters
+        ---------
+        file_path : str
+            The file path to the pickle file along with the extension
+        """
+        data = {
+            "name": self.name,
+            "category": self.category,
+            "_phenotype_data": self._phenotype_data,
+            "_feature_data": self._feature_data,
+            "feature_type": self.feature_type,
+            "_common_genomes": self._common_genomes,
+        }
+        with open(file_path, "wb") as fid:
+            pickle.dump(data, fid)
+
+    @classmethod
+    def load(cls, file_path: str) -> "Phenotype":
+        """
+        Loads the phenotype data from the given path.
+
+        Parameters
+        ---------
+        file_path : str
+            The file path to the pickle file along with the extension
+
+        Returns
+        ------
+        Phenotype
+            Phenotype object
+        """
+        with open(file_path, "rb") as fid:
+            data = pickle.load(fid)
+        phenotype = cls(data["_phenotype_data"], data["name"], data["category"])
+        if data["_feature_data"] is not None:
+            phenotype.set_feature_data(
+                data["_feature_data"], data["feature_type"], force=True
+            )
+            if phenotype._common_genomes != data["_common_genomes"]:
+                raise ValueError("Common genomes do not match")
+        return phenotype
