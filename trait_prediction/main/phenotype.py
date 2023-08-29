@@ -97,7 +97,7 @@ class Phenotype:
         ----
         This method will overwrite self.phenotype_data and self.feature_data (force=True).
         """
-        if self.feature_data is None or force:
+        if self._feature_data is None or force:
             common_genomes = sorted(
                 list(
                     set(self.phenotype_data.index).intersection(
