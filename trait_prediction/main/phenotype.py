@@ -1,5 +1,7 @@
 """Module that defines the Phenotype class"""
 
+from typing import Union
+
 import pandas as pd
 
 from ..feature_selection.reduction import (
@@ -29,21 +31,30 @@ class Phenotype:
             Name of the phenotype.
         category : str
             Category of the phenotype.
-        feature_data : union[pd.DataFrame, None]
+        feature_data : pd.DataFrame
             Pandas DataFrame containing the feature data.
-        feature_type : union[str, None]
+        feature_type : Union[str, None]
             Type of the feature data.
     """
 
     def __init__(self, raw_phenotype_data: pd.Series, name: str, category: str) -> None:
         self.name = name
         self.category = category
-        self.phenotype_data = self._parse_phenotype_data(raw_phenotype_data)
-        self.feature_data = None
-        self.feature_type = None
+        self._phenotype_data = self._parse_phenotype_data(raw_phenotype_data)
+        self._feature_data: Union[None, pd.DataFrame] = None
+        self.feature_type: Union[None, str] = None
+        self._common_genomes: Union[None, list[str]] = None
 
     def __repr__(self) -> str:
         return f"Phenotype(name={self.name}, category={self.category}, size={self.phenotype_data.shape})"
+
+    @property
+    def phenotype_data(self) -> pd.Series:
+        """Pandas Series containing the filtered phenotype data."""
+        if self._common_genomes is None:
+            return self._phenotype_data
+        else:
+            return self._phenotype_data.loc[self._common_genomes, :].copy()
 
     def _parse_phenotype_data(self, raw_phenotype_data: pd.Series) -> pd.Series:
         """
@@ -76,6 +87,10 @@ class Phenotype:
         force : bool
             If True, the feature data will be set even if it was already set.
             Default value is False
+
+        Note
+        ----
+        This method will overwrite self.phenotype_data and self.feature_data (force=True).
         """
         if self.feature_data is None or force:
             common_genomes = sorted(
@@ -85,10 +100,27 @@ class Phenotype:
                     )
                 )
             )
-            self.feature_data = raw_feature_data.loc[common_genomes, :]
+            self._common_genomes = common_genomes
+            self._feature_data = raw_feature_data.loc[common_genomes, :]
             self.feature_type = feature_type
         else:
             raise ValueError("Feature data already set for this phenotype")
+
+    @property
+    def feature_data(self) -> Union[pd.DataFrame, None]:
+        """Pandas DataFrame containing the feature data."""
+        if self._feature_data is None:
+            raise ValueError("Feature data not set for this phenotype")
+        else:
+            return self._feature_data.copy()
+
+    def unset_feature_data(self) -> None:
+        """
+        Unsets the feature data for this phenotype.
+        """
+        self._feature_data = None
+        self.feature_type = None
+        self._common_genomes = None
 
     def filter_feature_data(
         self, variance_threshold: float = 0.05, correlation_treshold: float = 0.95
@@ -121,7 +153,7 @@ class Phenotype:
                 fd_high_var_low_corr,
                 corr_group_dict,
             ) = remove_features_with_high_correlation(fd_high_var, correlation_treshold)
-            self.feature_data = fd_high_var_low_corr
+            self._feature_data = fd_high_var_low_corr
         else:
             raise ValueError("Feature data not set for this phenotype")
         return low_var_features, corr_group_dict
