@@ -1,6 +1,5 @@
 """Module that defines the Phenotype class"""
 
-from typing import Union
 import pickle
 
 import pandas as pd
@@ -9,6 +8,9 @@ from ..feature_selection.reduction import (
     remove_features_with_high_correlation,
     remove_features_with_low_variance,
 )
+
+# TODO: Create Phenotypes class that contains multiple Phenotype objects
+# TODO: Save data using feather format instead of pickle
 
 
 class Phenotype:
@@ -34,7 +36,7 @@ class Phenotype:
             Category of the phenotype.
         feature_data : pd.DataFrame
             Pandas DataFrame containing the feature data.
-        feature_type : Union[str, None]
+        feature_type : str | None
             Type of the feature data.
     """
 
@@ -42,9 +44,9 @@ class Phenotype:
         self.name = name
         self.category = category
         self._phenotype_data = self._parse_phenotype_data(raw_phenotype_data)
-        self._feature_data: Union[None, pd.DataFrame] = None
-        self.feature_type: Union[None, str] = None
-        self._common_genomes: Union[None, list[str]] = None
+        self._feature_data: None | pd.DataFrame = None
+        self.feature_type: None | str = None
+        self._common_genomes: None | list[str] = None
 
     def __repr__(self) -> str:
         if self._common_genomes is None:
@@ -117,7 +119,7 @@ class Phenotype:
             raise ValueError("Feature data already set for this phenotype")
 
     @property
-    def feature_data(self) -> Union[pd.DataFrame, None]:
+    def feature_data(self) -> pd.DataFrame | None:
         """Pandas DataFrame containing the feature data."""
         if self._feature_data is None:
             raise ValueError("Feature data not set for this phenotype")
