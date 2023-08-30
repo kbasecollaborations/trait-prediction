@@ -9,9 +9,6 @@ from ..feature_selection.reduction import (
     remove_features_with_low_variance,
 )
 
-# TODO: Create Phenotypes class that contains multiple Phenotype objects
-# TODO: Save data using feather format instead of pickle
-
 
 class Phenotype:
     """
@@ -54,6 +51,14 @@ class Phenotype:
         else:
             size = len(self._common_genomes)
         return f"Phenotype (name={self.name}, category={self.category}, size={size})"
+
+    def __hash__(self) -> int:
+        unique_id = {
+            "name": self.name,
+            "category": self.category,
+            "feature_type": self.feature_type,
+        }
+        return hash(unique_id)
 
     @property
     def phenotype_data(self) -> pd.Series:
