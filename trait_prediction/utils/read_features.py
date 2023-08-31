@@ -1,6 +1,7 @@
 """Module that contains functions for reading data from files."""
 
 import pathlib
+
 import pandas as pd
 
 
