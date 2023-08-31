@@ -1,10 +1,10 @@
 """Module that defines the PhenotypePredictor class."""
 
-from typing import Optional, Union
+from typing import Optional
 
 import pandas as pd
-from imblearn.under_sampling import RandomUnderSampler
 from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
     accuracy_score,
@@ -16,11 +16,8 @@ from sklearn.model_selection import train_test_split
 
 from ..main import Phenotype
 
-# TODO:
-# PhenotypePredictor(phenotype: Phenotype, Clf: any) -> None:
-# train_test_split using imblearn (check class ratio)
-# How to get this class to work with various different classifiers?
-# optuna
+# TODO: hyperparam optimization using optuna
+# TODO: Use logging module instead of print statements
 
 
 class PhenotypePredictor:
@@ -44,7 +41,7 @@ class PhenotypePredictor:
         Classifier used for the machine learning.
     random_state : Optional[int]
         Random state for the machine learning.
-    data : dict[str, Union[pd.DataFrame, pd.Series]]
+    data : dict[str, pd.DataFrame | pd.Series]
         Dictionary containing the data for the machine learning.
     """
 
@@ -63,7 +60,7 @@ class PhenotypePredictor:
         self._data_prep = False
 
     @property
-    def data(self) -> dict[str, Union[pd.DataFrame, pd.Series]]:
+    def data(self) -> dict[str, pd.DataFrame | pd.Series]:
         """Dictionary containing the data for the machine learning."""
         if self._data_prep:
             return {
@@ -80,7 +77,7 @@ class PhenotypePredictor:
         test_size: float = 0.3,
         stratify: bool = True,
         imbalanced: Optional[str] = "auto",
-    ) -> dict[str, Union[pd.DataFrame, pd.Series]]:
+    ) -> dict[str, pd.DataFrame | pd.Series]:
         """
         Split the data into train and test sets using `train_test_split`.
 
@@ -98,7 +95,7 @@ class PhenotypePredictor:
 
         Returns
         ------
-        dict[str, Union[pd.DataFrame, pd.Series]]
+        dict[str, pd.DataFrame | pd.Series]
             Dictionary containing the data for the machine learning.
         """
         if stratify:
@@ -128,20 +125,28 @@ class PhenotypePredictor:
                         self._sampler = RandomOverSampler(
                             random_state=self.random_state
                         )
+                        print("Performing Oversampling...")
                     else:
                         self._sampler = RandomUnderSampler(
                             random_state=self.random_state
                         )
+                        print("Performing Undersampling...")
+                else:
+                    self._sampler = RandomUnderSampler(random_state=self.random_state)
+                    print("Performing Undersampling...")
             elif imbalanced == "undersample":
                 # NOTE: this removes samples from the majority class
                 self._sampler = RandomUnderSampler(random_state=self.random_state)
+                print("Performing Undersampling...")
             elif imbalanced == "oversample":
                 # NOTE: this adds samples to the minority class (random sample with replacement)
                 self._sampler = RandomOverSampler(random_state=self.random_state)
+                print("Performing Oversampling...")
             else:
                 raise ValueError(
                     "imbalanced must be 'auto', 'undersample', or 'oversample'."
                 )
+            # NOTE: Indices of the training dataset are lost after sampling
             self._X_train, self._y_train = self._sampler.fit_resample(  # type: ignore
                 self._X_train, self._y_train
             )
