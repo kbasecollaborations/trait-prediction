@@ -49,6 +49,25 @@ class PhenotypeSet(Sequence[Phenotype]):
 
     # NOTE: __contains__, __reversed__, index and count methods are mixins
 
+    @staticmethod
+    def make_index(name: str, category: str) -> PhenotypeIndex:
+        """
+        Creates a PhenotypeIndex object.
+
+        Parameters
+        ---------
+        name : str
+            Name of the phenotype.
+        category : str
+            Category of the phenotype.
+
+        Returns
+        ------
+        PhenotypeIndex
+            PhenotypeIndex object.
+        """
+        return PhenotypeIndex(name=name, category=category)
+
     @property
     def phenotypes(self) -> Iterable[Phenotype]:
         """Iterable of Phenotype objects."""
