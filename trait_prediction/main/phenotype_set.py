@@ -33,7 +33,7 @@ class PhenotypeSet(Sequence[Phenotype]):
     def __init__(self, phenotypes: list[Phenotype]) -> None:
         super().__init__()
         self._phenotype_dict = {
-            PhenotypeIndex(phenotype.name, phenotype.category): phenotype
+            PhenotypeIndex(name=phenotype.name, category=phenotype.category): phenotype
             for phenotype in phenotypes
         }
 
