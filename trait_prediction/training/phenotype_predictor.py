@@ -2,17 +2,12 @@
 
 from typing import Optional
 
+import numpy as np
 import pandas as pd
+import seaborn as sns
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler
-from sklearn.metrics import (
-    ConfusionMatrixDisplay,
-    accuracy_score,
-    classification_report,
-    confusion_matrix,
-    f1_score,
-)
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_validate, train_test_split
 
 from ..main import Phenotype
 
@@ -49,7 +44,7 @@ class PhenotypePredictor:
         self, phenotype: Phenotype, classifier, random_state: Optional[int] = None
     ) -> None:
         self.phenotype = phenotype
-        self.clasifier = classifier
+        self.classifier = classifier
         self.random_state = random_state
         if phenotype.feature_data is None:
             raise ValueError(
@@ -161,7 +156,7 @@ class PhenotypePredictor:
     def fit(self) -> None:
         """Fit the classifier to the training data."""
         if self._data_prep:
-            self.clasifier.fit(self._X_train, self._y_train)
+            self.classifier.fit(self._X_train, self._y_train)
         else:
             raise ValueError("Data has not been prepared. Call `split_data` first.")
 
@@ -182,7 +177,72 @@ class PhenotypePredictor:
             Pandas DataFrame containing the predicted phenotype.
         """
         if X is not None:
-            y_pred = self.clasifier.predict(X)
+            y_pred = self.classifier.predict(X)
         else:
-            y_pred = self.clasifier.predict(self._X_test)
+            y_pred = self.classifier.predict(self._X_test)
         return y_pred
+
+    def cross_validate_kfold(
+        self,
+        n_splits: int,
+        n_jobs: int = -1,
+        scoring=("balanced_accuracy", "precision", "recall", "f1", "roc_auc"),
+    ) -> dict[str, np.ndarray]:
+        """
+        Perform cross validation using StratifiedKFold and return scores
+
+        Parameters
+        ---------
+        n_splits : int
+            Number of splits
+        n_jobs : int, optional
+            The number of jobs to run in parallel
+            Default value is -1 (uses all available processors)
+        scoring : tuple[str], optional
+            The scoring metrics to use during cross validation
+            Default value is ("balanced_accuracy", "precision", "recall", "f1", "roc_auc")
+
+        Returns
+        ------
+        dict[str, np.ndarray]
+            Cross validation scores for each scoring metric
+        """
+
+        if self._data_prep:
+            scores = cross_validate(
+                self.classifier,
+                self._X_train,  # type: ignore
+                self._y_train,
+                scoring=scoring,
+                cv=n_splits,
+                n_jobs=n_jobs,
+                return_estimator=True,
+            )
+        else:
+            raise ValueError("Data has not been prepared. Call `split_data` first.")
+        return scores
+
+    @staticmethod
+    def plot_cross_validation(scores: dict[str, np.ndarray]):
+        """
+        Visualize cross validation performance
+
+        Parameters
+        ---------
+        scores : dict[str, np.ndarray]
+            Cross validation scores obtained from Classifier.cross_validate
+        """
+        scoring_metrics = [x for x in scores.keys() if x.startswith("test_")]
+        data = []
+        for metric in scoring_metrics:
+            for i, score in enumerate(scores[metric]):
+                data.append(
+                    {
+                        "metric": metric.strip("test_"),
+                        "score": score,
+                        "fold": i,
+                    }
+                )
+        cv_df = pd.DataFrame(data)
+        plot = sns.catplot(cv_df, x="fold", y="score", hue="metric", kind="bar")
+        return plot
