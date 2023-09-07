@@ -1,5 +1,6 @@
 """Module that defines the PhenotypeSet class"""
 
+import pathlib
 from collections.abc import Iterable, Sequence
 from typing import Iterator, NamedTuple
 
@@ -74,13 +75,13 @@ class PhenotypeSet(Sequence[Phenotype]):
         return self.__iter__()
 
     @classmethod
-    def read_data(cls, file_path: str) -> "PhenotypeSet":
+    def read_data(cls, file_path: str | pathlib.Path) -> "PhenotypeSet":
         """
         Reads phenotype data from a TSV file and returns a PhenotypeSet object.
 
         Parameters
         ---------
-        data : str
+        file_path : str | pahtlib.Path
             Path to the TSV file containing the phenotype data.
 
         Returns
