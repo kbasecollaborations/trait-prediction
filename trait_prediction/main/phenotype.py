@@ -1,5 +1,6 @@
 """Module that defines the Phenotype class"""
 
+import pathlib
 import pickle
 
 import numpy as np
@@ -204,13 +205,13 @@ class Phenotype:
         self._feature_data = feature_data[selected_features]
         return self._feature_data
 
-    def save(self, file_path: str) -> None:
+    def save(self, file_path: str | pathlib.Path) -> None:
         """
         Saves the phenotype data to the given path.
 
         Parameters
         ---------
-        file_path : str
+        file_path : str | pathlib.Path
             The file path to the pickle file along with the extension
         """
         data = {
@@ -225,13 +226,13 @@ class Phenotype:
             pickle.dump(data, fid)
 
     @classmethod
-    def load(cls, file_path: str) -> "Phenotype":
+    def load(cls, file_path: str | pathlib.Path) -> "Phenotype":
         """
         Loads the phenotype data from the given path.
 
         Parameters
         ---------
-        file_path : str
+        file_path : str | pathlib.Path
             The file path to the pickle file along with the extension
 
         Returns
