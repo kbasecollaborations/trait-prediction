@@ -2,6 +2,7 @@
 
 import pickle
 
+import numpy as np
 import pandas as pd
 
 from ..feature_selection.reduction import (
@@ -126,7 +127,7 @@ class Phenotype:
             raise ValueError("Feature data already set for this phenotype")
 
     @property
-    def feature_data(self) -> pd.DataFrame | None:
+    def feature_data(self) -> pd.DataFrame:
         """Pandas DataFrame containing the feature data."""
         if self._feature_data is None:
             raise ValueError("Feature data not set for this phenotype")
@@ -176,6 +177,32 @@ class Phenotype:
         else:
             raise ValueError("Feature data not set for this phenotype")
         return low_var_features, corr_group_dict
+
+    def select_kbest_features(
+        self, feature_importances: np.ndarray, k: int
+    ) -> pd.DataFrame:
+        """
+        Selects the k best features for this phenotype using feature_importances
+
+            Parameters
+            ---------
+            feature_importances : np.ndarray
+                Numpy array containing the feature importances
+            k : int
+                Number of features to select
+
+            Returns
+            ------
+            pd.DataFrame
+                Pandas DataFrame containing the selected features
+        """
+        feature_data = self.feature_data
+        importance_df = pd.DataFrame(
+            {"feature": feature_data.columns, "importance": feature_importances}
+        ).sort_values(by="importance", ascending=False)
+        selected_features = importance_df["feature"].tolist()[:k]
+        self._feature_data = feature_data[selected_features]
+        return self._feature_data
 
     def save(self, file_path: str) -> None:
         """
