@@ -106,6 +106,7 @@ class PhenotypePredictor:
             random_state=self.random_state,
             stratify=y_stratify,
         )
+        sampling_type = None
         if imbalanced is not None:
             if imbalanced == "auto":
                 from collections import Counter
@@ -122,23 +123,23 @@ class PhenotypePredictor:
                         self._sampler = RandomOverSampler(
                             random_state=self.random_state
                         )
-                        print("Performing Oversampling...")
+                        sampling_type = "oversample"
                     else:
                         self._sampler = RandomUnderSampler(
                             random_state=self.random_state
                         )
-                        print("Performing Undersampling...")
+                        sampling_type = "undersample"
                 else:
                     self._sampler = RandomUnderSampler(random_state=self.random_state)
-                    print("Performing Undersampling...")
+                    sampling_type = "undersample"
             elif imbalanced == "undersample":
                 # NOTE: this removes samples from the majority class
                 self._sampler = RandomUnderSampler(random_state=self.random_state)
-                print("Performing Undersampling...")
+                sampling_type = "undersample"
             elif imbalanced == "oversample":
                 # NOTE: this adds samples to the minority class (random sample with replacement)
                 self._sampler = RandomOverSampler(random_state=self.random_state)
-                print("Performing Oversampling...")
+                sampling_type = "oversample"
             else:
                 raise ValueError(
                     "imbalanced must be 'auto', 'undersample', or 'oversample'."
@@ -151,7 +152,7 @@ class PhenotypePredictor:
         self._sampling_params = {
             "test_size": test_size,
             "stratify": stratify,
-            "imbalanced_sampling": imbalanced,
+            "sampling_type": sampling_type,
         }
         return self.data
 
