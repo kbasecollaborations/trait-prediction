@@ -182,6 +182,68 @@ class PhenotypePredictor:
             y_pred = self.classifier.predict(self._X_test)
         return y_pred
 
+    def save(self, folder: str | pathlib.Path) -> None:
+        """
+        Save the current state of the PhenotypePredictor and Phenotype to a folder.
+
+        Parameters
+        ---------
+        folder : str | pathlib.Path
+            Folder to save the objects
+        """
+        folder = pathlib.Path(folder)
+        folder.mkdir(exist_ok=True, parents=True)
+        pt_file = folder / "phenotype.pkl"
+        pt_predictor_file = folder / "phenotype_predictor.pkl"
+        self.phenotype.save(pt_file)
+        data = {
+            "classifier": self.classifier,
+            "random_state": self.random_state,
+            "_data_prep": self._data_prep,
+        }
+        if self._data_prep is not None:
+            data.update(
+                **{
+                    "classifier": self.classifier,
+                    "random_state": self.random_state,
+                    "sampling_params": self._sampling_params,
+                    "data": self.data,
+                }
+            )
+        with open(folder / "phenotype_predictor.pkl", "wb") as fid:
+            pickle.dump(self, fid)
+
+    @classmethod
+    def load(cls, folder: str | pathlib.Path) -> "PhenotypePredictor":
+        """
+        Load the PhenotypePredictor and Phenotype from a folder.
+
+        Parameters
+        ---------
+        folder : str | pathlib.Path
+            Folder to load the objects
+
+        Returns
+        ------
+        PhenotypePredictor
+            PhenotypePredictor object
+        """
+        folder = pathlib.Path(folder)
+        pt_file = folder / "phenotype.pkl"
+        pt_predictor_file = folder / "phenotype_predictor.pkl"
+        phenotype = Phenotype.load(pt_file)
+        with open(pt_predictor_file, "rb") as fid:
+            data = pickle.load(fid)
+        phenotype_predictor = cls(phenotype, data["classifier"], data["random_state"])
+        if data["_data_prep"] is not None:
+            phenotype_predictor._data_prep = data["_data_prep"]
+            phenotype_predictor._sampling_params = data["sampling_params"]
+            phenotype_predictor._X_train = data["data"]["X_train"]
+            phenotype_predictor._X_test = data["data"]["X_test"]
+            phenotype_predictor._y_train = data["data"]["y_train"]
+            phenotype_predictor._y_test = data["data"]["y_test"]
+        return phenotype_predictor
+
     def cross_validate_kfold(
         self,
         n_splits: int,
