@@ -91,7 +91,10 @@ class Phenotype:
         pd.Series
             Pandas Series containing the filtered phenotype data.
         """
-        return raw_phenotype_data.dropna()
+        undup_raw_phenotype_data = raw_phenotype_data.dropna()
+        return undup_raw_phenotype_data[
+            ~undup_raw_phenotype_data.index.duplicated(keep="first")
+        ]
 
     def set_feature_data(
         self, raw_feature_data: pd.DataFrame, feature_type: str, force: bool = False
@@ -114,15 +117,18 @@ class Phenotype:
         This method will overwrite self.phenotype_data and self.feature_data (force=True).
         """
         if self._feature_data is None or force:
+            undup_raw_feature_data = raw_feature_data[
+                ~raw_feature_data.index.duplicated(keep="first")
+            ]
             common_genomes = sorted(
                 list(
                     set(self.phenotype_data.index).intersection(
-                        set(raw_feature_data.index)
+                        set(undup_raw_feature_data.index)
                     )
                 )
             )
             self._common_genomes = common_genomes
-            self._feature_data = raw_feature_data.loc[common_genomes, :]
+            self._feature_data = undup_raw_feature_data.loc[common_genomes, :]
             self.feature_type = feature_type
         else:
             raise ValueError("Feature data already set for this phenotype")
