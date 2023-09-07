@@ -1,5 +1,7 @@
 """Module that defines the PhenotypePredictor class."""
 
+import pathlib
+import pickle
 from typing import Optional
 
 import numpy as np
@@ -256,7 +258,7 @@ class PhenotypePredictor:
             "roc_auc",
             "matthews_corrcoef",
         ),
-    ) -> dict[str, np.ndarray]:
+    ) -> tuple[pd.DataFrame, list]:
         """
         Perform cross validation using StratifiedKFold and return scores
 
@@ -273,10 +275,11 @@ class PhenotypePredictor:
 
         Returns
         ------
-        dict[str, np.ndarray]
-            Cross validation scores for each scoring metric
+        cv_df: pd.DataFrame
+            Cross validation scores
+        estimators: list
+            List of estimators for each fold
         """
-
         if self._data_prep:
             scores = cross_validate(
                 self.classifier,
@@ -289,18 +292,6 @@ class PhenotypePredictor:
             )
         else:
             raise ValueError("Data has not been prepared. Call `split_data` first.")
-        return scores
-
-    @staticmethod
-    def plot_cross_validation(scores: dict[str, np.ndarray]):
-        """
-        Visualize cross validation performance
-
-        Parameters
-        ---------
-        scores : dict[str, np.ndarray]
-            Cross validation scores obtained from Classifier.cross_validate
-        """
         scoring_metrics = [x for x in scores.keys() if x.startswith("test_")]
         data = []
         for metric in scoring_metrics:
@@ -309,10 +300,23 @@ class PhenotypePredictor:
                     {
                         "metric": metric.strip("test_"),
                         "score": score,
-                        "fold": i,
+                        "fold": i + 1,
                     }
                 )
         cv_df = pd.DataFrame(data)
-        plot = sns.boxplot(cv_df, y="metric", x="score")
+        estimators = scores["estimator"]
+        return cv_df, estimators
+
+    @staticmethod
+    def plot_cross_validation(scores: pd.DataFrame):
+        """
+        Visualize cross validation performance
+
+        Parameters
+        ---------
+        scores : pd.DataFrame
+            Cross validation scores obtained from PhenotypePredictor.cross_validate_kfold
+        """
+        plot = sns.boxplot(scores, y="metric", x="score")
         plot.set_xlim((0, 1))
         return plot
