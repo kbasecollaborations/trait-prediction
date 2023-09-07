@@ -244,5 +244,6 @@ class PhenotypePredictor:
                     }
                 )
         cv_df = pd.DataFrame(data)
-        plot = sns.catplot(cv_df, x="fold", y="score", hue="metric", kind="bar")
+        plot = sns.boxplot(cv_df, y="metric", x="score")
+        plot.set_xlim((0, 1))
         return plot
