@@ -133,7 +133,16 @@ def main(
         low_var_features, correlated_features_dict = phenotype.filter_feature_data(
             variance_threshold=0.01, correlation_treshold=0.95
         )
+        # Skip if phenotype has less than 10 samples
         if phenotype.phenotype_data.shape[0] <= 10:
+            pbar.set_description(f"Skipping {phenotype}")
+            continue
+        # Skip if minor class of phenotype has less than 5 samples
+        if phenotype.phenotype_data.value_counts().min() <= 5:
+            pbar.set_description(f"Skipping {phenotype}")
+            continue
+        # Skip if phenotype has only one class
+        if len(phenotype.phenotype_data.unique()) == 1:
             pbar.set_description(f"Skipping {phenotype}")
             continue
 
