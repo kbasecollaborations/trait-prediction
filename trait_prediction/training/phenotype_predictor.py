@@ -186,7 +186,14 @@ class PhenotypePredictor:
         self,
         n_splits: int,
         n_jobs: int = -1,
-        scoring=("balanced_accuracy", "precision", "recall", "f1", "roc_auc"),
+        scoring=(
+            "balanced_accuracy",
+            "precision",
+            "recall",
+            "f1",
+            "roc_auc",
+            "matthews_corrcoef",
+        ),
     ) -> dict[str, np.ndarray]:
         """
         Perform cross validation using StratifiedKFold and return scores
@@ -200,7 +207,7 @@ class PhenotypePredictor:
             Default value is -1 (uses all available processors)
         scoring : tuple[str], optional
             The scoring metrics to use during cross validation
-            Default value is ("balanced_accuracy", "precision", "recall", "f1", "roc_auc")
+            Default value is ("balanced_accuracy", "precision", "recall", "f1", "roc_auc", "matthews_corrcoef").
 
         Returns
         ------
