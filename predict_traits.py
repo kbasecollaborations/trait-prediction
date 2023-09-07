@@ -133,6 +133,9 @@ def main(
         low_var_features, correlated_features_dict = phenotype.filter_feature_data(
             variance_threshold=0.01, correlation_treshold=0.95
         )
+        if phenotype.phenotype_data.shape[0] <= 10:
+            pbar.set_description(f"Skipping {phenotype}")
+            continue
 
         # make classifier and predict
         categorical_feature_names = phenotype.feature_data.columns.to_list()
