@@ -162,6 +162,9 @@ cython_debug/
 # VScode
 *.code-workspace
 
+# syncthing
+.stignore
+
 # Data
 data/
 *.pkl
