@@ -166,6 +166,7 @@ def main(
         explainer = shap.Explainer(clf)
         shap_values = explainer(phenotype.feature_data)
         shap.summary_plot(shap_values, max_display=10, show=False)
+        # FIXME: The plots needs to be clearled befoe plotting the next thing
         shap_summary_plot = plt.gcf()
 
         # file writing
