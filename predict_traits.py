@@ -8,14 +8,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import shap
 from catboost import CatBoostClassifier
-from sklearn.metrics import (
-    accuracy_score,
-    balanced_accuracy_score,
-    f1_score,
-    matthews_corrcoef,
-    precision_score,
-    recall_score,
-)
+from sklearn.metrics import (accuracy_score, balanced_accuracy_score, f1_score,
+                             matthews_corrcoef, precision_score, recall_score)
 from tqdm import tqdm
 
 from trait_prediction.main import Phenotype, PhenotypeSet
@@ -175,10 +169,14 @@ def main(
     feature_type: str,
     random_state: int,
     results_folder: pathlib.Path,
+    limit: int | None,
     cross_validate: bool,
     overwrite: bool,
 ) -> None:
-    phenotypeset = PhenotypeSet.read_data(phenotype_file)
+    if limit is not None:
+        phenotypeset = PhenotypeSet.limit(PhenotypeSet.read_data(phenotype_file), limit)
+    else:
+        phenotypeset = PhenotypeSet.read_data(phenotype_file)
     features, id_dict = read_data(feature_file, feature_type)
     pbar = tqdm(phenotypeset)
     for phenotype in pbar:
@@ -268,6 +266,9 @@ if __name__ == "__main__":
         "--random_state", type=int, default=RANDOM_STATE, help="Random state"
     )
     parser.add_argument(
+        "--limit", type=int, default=None, help="Limit the number of phenotypes"
+    )
+    parser.add_argument(
         "--cross_validate",
         action="store_true",
         help="Perform cross validation",
@@ -283,6 +284,7 @@ if __name__ == "__main__":
     feature_type = args.feature_type
     random_state = args.random_state
     results_folder = pathlib.Path(args.results_folder)
+    limit = args.limit
     cross_validate = args.cross_validate
     overwrite = args.overwrite
     if phenotype_file.is_file() and feature_file.is_file():
@@ -292,6 +294,7 @@ if __name__ == "__main__":
             feature_type,
             random_state,
             results_folder,
+            limit,
             cross_validate,
             overwrite,
         )
