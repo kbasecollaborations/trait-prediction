@@ -2,6 +2,7 @@
 
 import pathlib
 from collections.abc import Iterable, Sequence
+from itertools import islice
 from typing import Iterator, NamedTuple
 
 import pandas as pd
@@ -45,8 +46,7 @@ class PhenotypeSet(Sequence[Phenotype]):
         return len(self._phenotype_dict)
 
     def __iter__(self) -> Iterator[Phenotype]:
-        for phenotype in self._phenotype_dict.values():
-            yield phenotype
+        yield from self._phenotype_dict.values()
 
     # NOTE: __contains__, __reversed__, index and count methods are mixins
 
@@ -102,9 +102,29 @@ class PhenotypeSet(Sequence[Phenotype]):
                 if col.startswith("Unnamed"):
                     num = col.rsplit(" ", 1)[-1]
                     name = f"unnamed_{num}"
-                    category = "unknown"
                 else:
                     name = col
-                    category = "unknown"
+                category = "unknown"
             phenotypes.append(Phenotype(phenotype_df[col], name, category))
         return PhenotypeSet(phenotypes)
+
+    # TODO: Add limit classmethod
+    @classmethod
+    def limit(cls, phenotype_set: "PhenotypeSet", limit: int) -> "PhenotypeSet":
+        """
+        Create a new PhenotypeSet object with a limited number of phenotypes.
+
+        Parameters
+        ---------
+        phenotype_set : "PhenotypeSet"
+            The PhenotypeSet object to limit
+        limit : int
+            The number of phenotypes to limit to
+
+        Returns
+        ------
+        "PhenotypeSet"
+            The PhenotypeSet object with limited number of phenotypes
+        """
+        limited_phenotypes = list(islice(phenotype_set.phenotypes, limit))
+        return cls(limited_phenotypes)
