@@ -24,6 +24,15 @@ from trait_prediction.utils import read_interpro_features, read_rast_features
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
+VARIANCE_THRESHOLD = 0.01
+CORRELATION_THRESHOLD = 0.95
+TEST_SIZE = 0.3
+RANDOM_STATE = 42
+N_SPLITS = 5
+PHENOTYPE_SAMPLE_SIZE_THRESHOLD = 10
+MINOR_CLASS_SAMPLE_SIZE_THRESHOLD = 5
+SHAP_MAX_DISPLAY = 10
+
 
 def read_data(
     phenotype_file: pathlib.Path, feature_type: str
@@ -124,11 +133,40 @@ def perform_cv(phenotype_predictor: PhenotypePredictor, n_splits: int):
     sampling_type = phenotype_predictor._sampling_params["sampling_type"]
     if sampling_type == "oversample":
         return None, None
-    else:
-        cv_scores, estimators = phenotype_predictor.cross_validate_kfold(
-            n_splits=n_splits
-        )
-        return cv_scores, estimators
+    cv_scores, estimators = phenotype_predictor.cross_validate_kfold(n_splits=n_splits)
+    return cv_scores, estimators
+
+
+def plot_shap_summary(
+    predictor: PhenotypePredictor,
+    feature_data: pd.DataFrame,
+    id_dict: dict,
+    output_file: str,
+) -> None:
+    """
+    Plot SHAP summary plot.
+
+    Parameters
+    ----------
+    predictor : PhenotypePredictor
+        PhenotypePredictor object.
+    feature_data : pd.DataFrame
+        Feature data.
+    id_dict : dict
+        Maps annotation ids to annotation names for feature data.
+    output_file : str
+        Output file path.
+    """
+    clf = predictor.classifier
+    feature_labels = [id_dict[c] for c in feature_data.columns]
+    explainer = shap.Explainer(clf)
+    shap_values = explainer(feature_data)
+    shap_values.feature_names = feature_labels
+    shap.summary_plot(shap_values, max_display=SHAP_MAX_DISPLAY, show=False)
+    plt.title(f"{predictor.phenotype.name}")
+    shap_summary_plot = plt.gcf()
+    shap_summary_plot.savefig(output_file)
+    plt.clf()
 
 
 def main(
@@ -137,6 +175,7 @@ def main(
     feature_type: str,
     random_state: int,
     results_folder: pathlib.Path,
+    cross_validate: bool,
     overwrite: bool,
 ) -> None:
     phenotypeset = PhenotypeSet.read_data(phenotype_file)
@@ -158,14 +197,18 @@ def main(
         # process phenotype and feature data
         phenotype.set_feature_data(features, feature_type=feature_type)
         low_var_features, correlated_features_dict = phenotype.filter_feature_data(
-            variance_threshold=0.01, correlation_treshold=0.95
+            variance_threshold=VARIANCE_THRESHOLD,
+            correlation_treshold=CORRELATION_THRESHOLD,
         )
-        # Skip if phenotype has less than 10 samples
-        if phenotype.phenotype_data.shape[0] <= 10:
+        # Skip if phenotype has less than 10 (default) samples
+        if phenotype.phenotype_data.shape[0] <= PHENOTYPE_SAMPLE_SIZE_THRESHOLD:
             pbar.set_description(f"Skipping {phenotype}")
             continue
-        # Skip if minor class of phenotype has less than 5 samples
-        if phenotype.phenotype_data.value_counts().min() <= 5:
+        # Skip if minor class of phenotype has less than 5 (default) samples
+        if (
+            phenotype.phenotype_data.value_counts().min()
+            <= MINOR_CLASS_SAMPLE_SIZE_THRESHOLD
+        ):
             pbar.set_description(f"Skipping {phenotype}")
             continue
         # Skip if phenotype has only one class
@@ -180,7 +223,7 @@ def main(
             phenotype, clf, random_state=random_state
         )
         data = phenotype_predictor.split_data(
-            test_size=0.3, stratify=True, imbalanced="auto"
+            test_size=TEST_SIZE, stratify=True, imbalanced="auto"
         )
         phenotype_predictor.fit()
         y_pred = phenotype_predictor.predict()
@@ -188,13 +231,10 @@ def main(
         scores = get_scores(y_true, y_pred, phenotype)  # type: ignore
 
         # cross validation
-        cv_scores, _ = perform_cv(phenotype_predictor, n_splits=5)
-        # shap values
-        explainer = shap.Explainer(clf)
-        shap_values = explainer(phenotype.feature_data)
-        shap.summary_plot(shap_values, max_display=10, show=False)
-        # FIXME: The plots needs to be cleared before plotting the next thing
-        shap_summary_plot = plt.gcf()
+        if cross_validate:
+            cv_scores, _ = perform_cv(phenotype_predictor, n_splits=5)
+        else:
+            cv_scores = None
 
         # file writing
         phenotype_predictor.save(output_folder)
@@ -203,8 +243,12 @@ def main(
         if cv_scores is not None:
             cv_scores_file = output_folder / "cv_scores.csv"
             cv_scores.to_csv(cv_scores_file, index=False, sep=",")
+
+        # save shap summary plot
         shap_summary_plot_file = str(output_folder / "shap_summary_plot.png")
-        shap_summary_plot.savefig(shap_summary_plot_file)
+        plot_shap_summary(
+            phenotype_predictor, phenotype.feature_data, id_dict, shap_summary_plot_file
+        )
 
         # unset the feature data to reduce memory
         phenotype.unset_feature_data()
@@ -220,7 +264,14 @@ if __name__ == "__main__":
         "results_folder", type=str, help="The folder to save the results"
     )
     parser.add_argument("--feature_type", type=str, help="The type of the feature file")
-    parser.add_argument("--random_state", type=int, default=42, help="Random state")
+    parser.add_argument(
+        "--random_state", type=int, default=RANDOM_STATE, help="Random state"
+    )
+    parser.add_argument(
+        "--cross_validate",
+        action="store_true",
+        help="Perform cross validation",
+    )
     parser.add_argument(
         "--overwrite",
         action="store_true",
@@ -232,7 +283,8 @@ if __name__ == "__main__":
     feature_type = args.feature_type
     random_state = args.random_state
     results_folder = pathlib.Path(args.results_folder)
-    overwrite = pathlib.Path(args.overwrite)
+    cross_validate = args.cross_validate
+    overwrite = args.overwrite
     if phenotype_file.is_file() and feature_file.is_file():
         main(
             phenotype_file,
@@ -240,6 +292,7 @@ if __name__ == "__main__":
             feature_type,
             random_state,
             results_folder,
+            cross_validate,
             overwrite,
         )
     else:

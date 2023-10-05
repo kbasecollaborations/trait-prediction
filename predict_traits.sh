@@ -7,7 +7,9 @@ python predict_traits.py \
     "data/raw/rast_features.tsv" \
     "data/outputs" \
     --feature_type "rast" \
-    --random_state 42
+    --random_state 42 \
+    --cross_validate \
+    --overwrite
 
 # Predict traits for non-metabolic phenotypes
 echo "Predicting traits for non-metabolic phenotypes"
@@ -16,4 +18,6 @@ python predict_traits.py \
     "data/raw/rast_features.tsv" \
     "data/outputs" \
     --feature_type "rast" \
-    --random_state 42
+    --random_state 42 \
+    --cross_validate \
+    --overwrite
