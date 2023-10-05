@@ -25,6 +25,33 @@ from trait_prediction.utils import read_interpro_features, read_rast_features
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
+def read_data(
+    phenotype_file: pathlib.Path, feature_type: str
+) -> tuple[pd.DataFrame, dict]:
+    """
+    Read the phenotype data.
+
+    Parameters
+    ---------
+    phenotype_file : pathlib.Path
+        The path to the phenotype file.
+    feature_type : str
+        The type of the feature file.
+
+    Returns
+    ------
+    tuple[pd.DataFrame, dict]
+        Tuple of phenotype data and id dictionary.
+    """
+    if feature_type == "rast":
+        features, id_dict = read_rast_features(feature_file)
+    elif feature_type == "interpro":
+        features, id_dict = read_interpro_features(feature_file)
+    else:
+        raise ValueError(f"Invalid feature type: {feature_type}")
+    return features, id_dict
+
+
 def make_classifier(random_state: int, categorical_feature_names: list[str]):
     """
     Creates a classifier.
@@ -110,21 +137,21 @@ def main(
     feature_type: str,
     random_state: int,
     results_folder: pathlib.Path,
+    overwrite: bool,
 ) -> None:
     phenotypeset = PhenotypeSet.read_data(phenotype_file)
-    if feature_type == "rast":
-        features, id_dict = read_rast_features(feature_file)
-    elif feature_type == "interpro":
-        features, id_dict = read_interpro_features(feature_file)
-    else:
-        raise ValueError(f"Invalid feature type: {feature_type}")
+    features, id_dict = read_data(feature_file, feature_type)
     pbar = tqdm(phenotypeset)
     for phenotype in pbar:
         pbar.set_description(f"Processing {phenotype}")
         output_folder = results_folder / f"{phenotype.category}/{phenotype.name}"
-        if output_folder.is_dir() and any(output_folder.iterdir()):
+        if (not overwrite) and output_folder.is_dir() and any(output_folder.iterdir()):
             pbar.set_description(f"Skipping {phenotype}")
             continue
+        elif overwrite and output_folder.is_dir() and any(output_folder.iterdir()):
+            for file in output_folder.iterdir():
+                file.unlink()
+            pbar.set_description(f"Overwriting {phenotype} results")
         else:
             output_folder.mkdir(parents=True, exist_ok=True)
 
@@ -166,7 +193,7 @@ def main(
         explainer = shap.Explainer(clf)
         shap_values = explainer(phenotype.feature_data)
         shap.summary_plot(shap_values, max_display=10, show=False)
-        # FIXME: The plots needs to be clearled befoe plotting the next thing
+        # FIXME: The plots needs to be cleared before plotting the next thing
         shap_summary_plot = plt.gcf()
 
         # file writing
@@ -194,13 +221,26 @@ if __name__ == "__main__":
     )
     parser.add_argument("--feature_type", type=str, help="The type of the feature file")
     parser.add_argument("--random_state", type=int, default=42, help="Random state")
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing results",
+    )
     args = parser.parse_args()
     phenotype_file = pathlib.Path(args.phenotype_file)
     feature_file = pathlib.Path(args.feature_file)
     feature_type = args.feature_type
     random_state = args.random_state
     results_folder = pathlib.Path(args.results_folder)
+    overwrite = pathlib.Path(args.overwrite)
     if phenotype_file.is_file() and feature_file.is_file():
-        main(phenotype_file, feature_file, feature_type, random_state, results_folder)
+        main(
+            phenotype_file,
+            feature_file,
+            feature_type,
+            random_state,
+            results_folder,
+            overwrite,
+        )
     else:
         raise FileNotFoundError("Phenotype file or feature file not found")
