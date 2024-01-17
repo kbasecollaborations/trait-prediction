@@ -5,6 +5,34 @@ import pathlib
 import pandas as pd
 
 
+def read_generic_features(
+    generic_feature_file: pathlib.Path, bool_conversion: bool = False
+) -> pd.DataFrame:
+    """
+    Reads the generic features from the given file and returns them as a pandas DataFrame.
+
+    Parameters
+    ---------
+    generic_feature_file : pathlib.Path
+        Path to the file containing the generic features.
+    bool_conversion : bool
+        Flag indicating whether to convert the features to boolean
+        Default is False
+
+    Returns
+    ------
+    pd.DataFrame
+        Pandas DataFrame containing the generic features.
+    """
+    converter = bool if bool_conversion else int
+    generic_df = (
+        pd.read_csv(generic_feature_file, sep="\t", index_col=0)
+        .fillna(0)
+        .astype(converter)
+    )
+    return generic_df
+
+
 def read_rast_features(
     rast_feature_file: pathlib.Path,
 ) -> tuple[pd.DataFrame, dict[str, str]]:
