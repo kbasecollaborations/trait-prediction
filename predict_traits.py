@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import pathlib
 import warnings
 
@@ -54,8 +55,8 @@ def read_feature_data(
         Tuple of feature data and id dictionary.
     """
     if feature_type == "generic":
-        features = read_generic_features(feature_file, bool_conversion=False)
-        id_dict = dict()
+        features = read_generic_features(feature_file, bool_conversion=True)
+        id_dict = {v: v for v in features.columns}
     elif feature_type == "rast":
         features, id_dict = read_rast_features(feature_file)
     elif feature_type == "interpro":
@@ -251,6 +252,14 @@ def main(
         if cv_scores is not None:
             cv_scores_file = output_folder / "cv_scores.csv"
             cv_scores.to_csv(cv_scores_file, index=False, sep=",")
+
+        # save low var and high corr features to files
+        with open(output_folder / "low_var_features.txt", "w") as fid:
+            for low_var_feature in low_var_features:
+                fid.write(low_var_feature)
+                fid.write("\n")
+        with open(output_folder / "corr_features.json", "w") as fid:
+            json.dump(correlated_features_dict, fid)
 
         # save shap summary plot
         shap_summary_plot_file = str(output_folder / "shap_summary_plot.png")

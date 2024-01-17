@@ -1,15 +1,26 @@
 #!/usr/bin/env bash
 
 # Predict traits for biolog data
-echo "Predicting traits for ch biolog"
+
+echo "Predicting traits for pmi biolog"
 python predict_traits.py \
-    "data/processed/biolog/phenotypes/ch_phenotypes.tsv" \
-    "data/processed/biolog/features/rast/rast_ch_features.tsv" \
+    "data/processed/biolog/phenotypes/pmi_phenotypes.tsv" \
+    "data/processed/biolog/features/rast/rast_pmi_features.tsv" \
     "data/outputs/biolog" \
     --feature_type "generic" \
     --limit 10 \
     --random_state 42 \
     --overwrite
+
+# echo "Predicting traits for ch biolog"
+# python predict_traits.py \
+#     "data/processed/biolog/phenotypes/ch_phenotypes.tsv" \
+#     "data/processed/biolog/features/rast/rast_ch_features.tsv" \
+#     "data/outputs/biolog" \
+#     --feature_type "generic" \
+#     --limit 10 \
+#     --random_state 42 \
+#     --overwrite
 
 # # Predict traits for metabolic phenotypes
 # echo "Predicting traits for metabolic phenotypes"
