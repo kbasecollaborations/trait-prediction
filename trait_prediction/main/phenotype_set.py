@@ -90,7 +90,13 @@ class PhenotypeSet(Sequence[Phenotype]):
             PhenotypeSet object containing the phenotype data.
 
         """
-        raw_phenotype_df = pd.read_csv(file_path, sep="\t", index_col=0)
+        raw_phenotype_df = pd.read_csv(
+            file_path, sep="\t", index_col=0, dtype={"genomeID": str}
+        )
+        if raw_phenotype_df.index.name != "genomeID":
+            raise ValueError("The index of the PhenotypeSet table must be 'genomeID'")
+        raw_phenotype_df.index = raw_phenotype_df.index.astype(str)
+        raw_phenotype_df.index.name = "genomeID"
         phenotype_df = raw_phenotype_df.select_dtypes(include="number")
         phenotypes = []
         for col in phenotype_df.columns:
