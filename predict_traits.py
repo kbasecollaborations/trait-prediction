@@ -8,13 +8,20 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import shap
 from catboost import CatBoostClassifier
-from sklearn.metrics import (accuracy_score, balanced_accuracy_score, f1_score,
-                             matthews_corrcoef, precision_score, recall_score)
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    f1_score,
+    matthews_corrcoef,
+    precision_score,
+    recall_score,
+)
 from tqdm import tqdm
 
 from trait_prediction.main import Phenotype, PhenotypeSet
 from trait_prediction.training import PhenotypePredictor
 from trait_prediction.utils import read_interpro_features, read_rast_features
+from trait_prediction.utils.read_features import read_generic_features
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -28,25 +35,28 @@ MINOR_CLASS_SAMPLE_SIZE_THRESHOLD = 5
 SHAP_MAX_DISPLAY = 10
 
 
-def read_data(
-    phenotype_file: pathlib.Path, feature_type: str
+def read_feature_data(
+    feature_file: pathlib.Path, feature_type: str
 ) -> tuple[pd.DataFrame, dict]:
     """
-    Read the phenotype data.
+    Read the feature data.
 
     Parameters
     ---------
-    phenotype_file : pathlib.Path
-        The path to the phenotype file.
+    feature_file : pathlib.Path
+        The path to the feature file.
     feature_type : str
         The type of the feature file.
 
     Returns
     ------
     tuple[pd.DataFrame, dict]
-        Tuple of phenotype data and id dictionary.
+        Tuple of feature data and id dictionary.
     """
-    if feature_type == "rast":
+    if feature_type == "generic":
+        features = read_generic_features(feature_file, bool_conversion=False)
+        id_dict = dict()
+    elif feature_type == "rast":
         features, id_dict = read_rast_features(feature_file)
     elif feature_type == "interpro":
         features, id_dict = read_interpro_features(feature_file)
@@ -177,7 +187,7 @@ def main(
         phenotypeset = PhenotypeSet.limit(PhenotypeSet.read_data(phenotype_file), limit)
     else:
         phenotypeset = PhenotypeSet.read_data(phenotype_file)
-    features, id_dict = read_data(feature_file, feature_type)
+    features, id_dict = read_feature_data(feature_file, feature_type)
     pbar = tqdm(phenotypeset)
     for phenotype in pbar:
         pbar.set_description(f"Processing {phenotype}")
