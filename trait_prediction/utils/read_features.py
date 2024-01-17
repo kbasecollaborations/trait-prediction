@@ -24,16 +24,17 @@ def read_generic_features(
     pd.DataFrame
         Pandas DataFrame containing the generic features.
     """
-    converter = bool if bool_conversion else int
     generic_df = (
         pd.read_csv(
             generic_feature_file, sep="\t", index_col=0, dtype={"genomeID": str}
         )
         .fillna(0)
-        .astype(converter)
+        .astype(int)
     )
     if generic_df.index.name != "genomeID":
         raise ValueError("The index of the Feature table must be 'genomeID'")
+    if bool_conversion:
+        generic_df[generic_df > 0] = 1
     return generic_df
 
 
