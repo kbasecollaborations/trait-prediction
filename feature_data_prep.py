@@ -31,10 +31,11 @@ def split_feature_data(
     rows = phenotype_df.index
     file_prefix = f"{feature_name}_{phenotype_name}"
     missing_rows = set(rows) - set(feature_df.index)
-    print(missing_rows)
+    output_sub_dir = output_dir / feature_name
+    output_sub_dir.mkdir(parents=True, exist_ok=True)
     if len(missing_rows) > 0:
         print(f"Missing {len(missing_rows)} keys for phenotype={phenotype_name}")
-        missing_keys_file = output_dir / f"{file_prefix}_missing_keys.txt"
+        missing_keys_file = output_sub_dir / f"{file_prefix}_missing_keys.txt"
         with open(missing_keys_file, "w") as fid:
             for missing_row in missing_rows:
                 fid.write(missing_row)
@@ -47,7 +48,7 @@ def split_feature_data(
     final_feature_df = new_feature_df.loc[
         new_feature_df.any(axis=1), new_feature_df.any(axis=0)
     ]
-    final_output_file = output_dir / f"{file_prefix}_features.tsv"
+    final_output_file = output_sub_dir / f"{file_prefix}_features.tsv"
     final_feature_df.to_csv(final_output_file, sep="\t", index=True)
     return final_feature_df
 
