@@ -2,8 +2,7 @@
 
 import numpy as np
 import pandas as pd
-
-# NOTE: Consider SelectKBest together with chi2/f_classif/mutual_info_classif for a more robust feature selection
+from sklearn.feature_selection import SelectKBest, chi2, f_classif, mutual_info_classif
 
 
 def remove_features_with_low_variance(
@@ -27,7 +26,7 @@ def remove_features_with_low_variance(
     list[str]
         List of the features with low variance that were removed
     """
-    var_filter = feature_df.var() > threshold
+    var_filter = feature_df.var() > threshold  # type: ignore
     removed_features = list(feature_df.columns[~var_filter])
     return feature_df.loc[:, var_filter], removed_features
 
@@ -64,3 +63,53 @@ def remove_features_with_high_correlation(
             corr_group_dict[col] = correlated_cols
             cols_to_drop_set.add(col)
     return feature_df.drop(list(cols_to_drop_set), axis=1), corr_group_dict
+
+
+def feature_selection_kbest(
+    feature_df: pd.DataFrame,
+    target_s: pd.Series,
+    score_func: str,
+    n_features: int = 1000,
+) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Select features according to the k highest score_func scores.
+
+    Parameters
+    ---------
+    feature_df : pd.DataFrame
+        Pandas DataFrame containing the features.
+    target_s : pd.Series
+        Pandas Series containing the target.
+    score_func : str
+        Supported values are 'f_classif', 'mutual_info_classif', 'chi2'
+        Function taking two arrays X and y, and returning a pair of arrays (scores, pvalues) or a single array with scores.
+    n_features : int, optional
+        Number of features to select.
+        Default value is 1000.
+
+    Returns
+    ------
+    pd.DataFrame
+        Pandas DataFrame containing the features with high score_func scores.
+    list[str]
+        List of removed features with low score_func score
+    """
+    if score_func == "f_classif":
+        score_function = f_classif
+    elif score_func == "mutual_info_classif":
+        score_function = mutual_info_classif
+    elif score_func == "chi2":
+        score_function = chi2
+    else:
+        raise ValueError(
+            f"score_func {score_func} is not supported. Supported functions are f_classif, mutual_info_classif, chi2"
+        )
+    kbest = SelectKBest(score_func=score_function, k=n_features)
+    kbest_features = kbest.fit_transform(feature_df, target_s)
+    kbest_feature_df = pd.DataFrame(
+        kbest_features,
+        columns=feature_df.columns[kbest.get_support()],
+        index=feature_df.index,
+    )
+    removed_features = list(feature_df.columns[~kbest.get_support()])
+    return kbest_feature_df, removed_features

@@ -7,9 +7,8 @@ import numpy as np
 import pandas as pd
 
 from ..feature_selection.reduction import (
-    remove_features_with_high_correlation,
-    remove_features_with_low_variance,
-)
+    feature_selection_kbest, remove_features_with_high_correlation,
+    remove_features_with_low_variance)
 
 # TODO: Write test. use copilot to write test
 
@@ -150,8 +149,12 @@ class Phenotype:
         self._common_genomes = None
 
     def filter_feature_data(
-        self, variance_threshold: float = 0.05, correlation_treshold: float = 0.95
-    ) -> tuple[list[str], dict[str, list[str]]]:
+        self,
+        variance_threshold: float = 0.05,
+        correlation_treshold: float = 0.95,
+        score_func: str | None = None,
+        n_features: int = 1000,
+    ) -> tuple[list[str], dict[str, list[str]], list[str]]:
         """
         Filters the feature data for this phenotype.
 
@@ -163,6 +166,13 @@ class Phenotype:
         correlation_treshold : float
             Threshold for the correlation of the features.
             Default value 0.95
+        score_func : str, optional
+            Supported values are 'f_classif', 'mutual_info_classif', 'chi2'
+            Default  value is None
+            Function taking two arrays X and y, and returning a pair of arrays (scores, pvalues) or a single array with scores.
+        n_features : int, optional
+            Number of features to select.
+            Default value is 1000.
 
         Returns
         -------
@@ -170,6 +180,8 @@ class Phenotype:
             List of the features with low variance that were removed
         dict[str, list[str]]
             Dictionary of the features with high correlation that were removed
+        list[str]
+            List of the features with low score_func score that were removed
 
         """
         if self._feature_data is not None:
@@ -180,28 +192,35 @@ class Phenotype:
                 fd_high_var_low_corr,
                 corr_group_dict,
             ) = remove_features_with_high_correlation(fd_high_var, correlation_treshold)
-            self._feature_data = fd_high_var_low_corr
+            if score_func is not None:
+                fd_final, low_score_features = feature_selection_kbest(
+                    fd_high_var_low_corr, self.phenotype_data, score_func, n_features
+                )
+            else:
+                fd_final = fd_high_var_low_corr
+                low_score_features = []
+            self._feature_data = fd_final
         else:
             raise ValueError("Feature data not set for this phenotype")
-        return low_var_features, corr_group_dict
+        return low_var_features, corr_group_dict, low_score_features
 
-    def select_kbest_features(
+    def select_important_features(
         self, feature_importances: np.ndarray, k: int
     ) -> pd.DataFrame:
         """
-        Selects the k best features for this phenotype using feature_importances
+        Selects the k most important features for this phenotype using feature_importances
 
-            Parameters
-            ---------
-            feature_importances : np.ndarray
-                Numpy array containing the feature importances
-            k : int
-                Number of features to select
+        Parameters
+        ---------
+        feature_importances : np.ndarray
+            Numpy array containing the feature importances
+        k : int
+            Number of features to select
 
-            Returns
-            ------
-            pd.DataFrame
-                Pandas DataFrame containing the selected features
+        Returns
+        ------
+        pd.DataFrame
+            Pandas DataFrame containing the selected features
         """
         feature_data = self.feature_data
         importance_df = pd.DataFrame(

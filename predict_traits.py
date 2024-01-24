@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import gc
 import json
 import pathlib
 import warnings
@@ -25,11 +26,11 @@ from trait_prediction.utils import read_interpro_features, read_rast_features
 from trait_prediction.utils.read_features import read_generic_features
 
 warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 VARIANCE_THRESHOLD = 0.01
 CORRELATION_THRESHOLD = 0.95
 TEST_SIZE = 0.3
-RANDOM_STATE = 42
 N_SPLITS = 5
 PHENOTYPE_SAMPLE_SIZE_THRESHOLD = 10
 MINOR_CLASS_SAMPLE_SIZE_THRESHOLD = 5
@@ -110,6 +111,7 @@ def get_scores(
     pd.DataFrame
         Scores.
     """
+    class_counts = phenotype.phenotype_data.value_counts()
     scores = {
         "name": phenotype.name,
         "category": phenotype.category,
@@ -119,6 +121,8 @@ def get_scores(
         "precision": precision_score(y_true, y_pred),
         "recall": recall_score(y_true, y_pred),
         "matthews_corrcoef": matthews_corrcoef(y_true, y_pred),
+        "class_0": class_counts[0],
+        "class_1": class_counts[1],
     }
     index = f"{phenotype.name}-{phenotype.category}"
     return pd.DataFrame(scores, index=[index])
@@ -181,8 +185,11 @@ def main(
     random_state: int,
     results_folder: pathlib.Path,
     limit: int | None,
+    score_func: str,
+    n_features: int,
     cross_validate: bool,
     overwrite: bool,
+    save_misc: bool,
 ) -> None:
     if limit is not None:
         phenotypeset = PhenotypeSet.limit(PhenotypeSet.read_data(phenotype_file), limit)
@@ -205,9 +212,16 @@ def main(
 
         # process phenotype and feature data
         phenotype.set_feature_data(features, feature_type=feature_type)
-        low_var_features, correlated_features_dict = phenotype.filter_feature_data(
+        # TODO: Add feature_selection_kbest here
+        (
+            low_var_features,
+            correlated_features_dict,
+            low_score_features,
+        ) = phenotype.filter_feature_data(
             variance_threshold=VARIANCE_THRESHOLD,
             correlation_treshold=CORRELATION_THRESHOLD,
+            score_func=score_func,
+            n_features=n_features,
         )
         # Skip if phenotype has less than 10 (default) samples
         if phenotype.phenotype_data.shape[0] <= PHENOTYPE_SAMPLE_SIZE_THRESHOLD:
@@ -246,20 +260,26 @@ def main(
             cv_scores = None
 
         # file writing
-        phenotype_predictor.save(output_folder)
         scores_file = output_folder / "scores.csv"
         scores.to_csv(scores_file, index=True, sep=",")
         if cv_scores is not None:
             cv_scores_file = output_folder / "cv_scores.csv"
             cv_scores.to_csv(cv_scores_file, index=False, sep=",")
 
-        # save low var and high corr features to files
-        with open(output_folder / "low_var_features.txt", "w") as fid:
-            for low_var_feature in low_var_features:
-                fid.write(low_var_feature)
-                fid.write("\n")
-        with open(output_folder / "corr_features.json", "w") as fid:
-            json.dump(correlated_features_dict, fid)
+        # Save misc. files
+        phenotype_predictor.save(output_folder)
+        if save_misc:
+            # save low var and high corr features to files
+            with open(output_folder / "low_var_features.txt", "w") as fid:
+                for low_var_feature in low_var_features:
+                    fid.write(low_var_feature)
+                    fid.write("\n")
+            with open(output_folder / "corr_features.json", "w") as fid:
+                json.dump(correlated_features_dict, fid)
+            with open(output_folder / "low_score_features.txt", "w") as fid:
+                for low_score_feature in low_score_features:
+                    fid.write(low_score_feature)
+                    fid.write("\n")
 
         # save shap summary plot
         shap_summary_plot_file = str(output_folder / "shap_summary_plot.png")
@@ -269,6 +289,12 @@ def main(
 
         # unset the feature data to reduce memory
         phenotype.unset_feature_data()
+
+        # garbage collection
+        del low_var_features
+        del correlated_features_dict
+        del low_score_features
+        gc.collect()
 
 
 if __name__ == "__main__":
@@ -281,11 +307,21 @@ if __name__ == "__main__":
         "results_folder", type=str, help="The folder to save the results"
     )
     parser.add_argument("--feature_type", type=str, help="The type of the feature file")
-    parser.add_argument(
-        "--random_state", type=int, default=RANDOM_STATE, help="Random state"
-    )
+    parser.add_argument("--random_state", type=int, default=42, help="Random state")
     parser.add_argument(
         "--limit", type=int, default=None, help="Limit the number of phenotypes"
+    )
+    parser.add_argument(
+        "--score_func",
+        type=str,
+        default=None,
+        help="Score function for feature selection",
+    )
+    parser.add_argument(
+        "--n_features",
+        type=int,
+        default=1000,
+        help="Limit the number of features based on score_func",
     )
     parser.add_argument(
         "--cross_validate",
@@ -297,15 +333,23 @@ if __name__ == "__main__":
         action="store_true",
         help="Overwrite existing results",
     )
+    parser.add_argument(
+        "--save_misc",
+        action="store_true",
+        help="Save the phenotype and predictor as a pickle file",
+    )
     args = parser.parse_args()
     phenotype_file = pathlib.Path(args.phenotype_file)
     feature_file = pathlib.Path(args.feature_file)
     feature_type = args.feature_type
-    random_state = args.random_state
+    random_state = int(args.random_state)
     results_folder = pathlib.Path(args.results_folder)
     limit = args.limit
+    score_func = args.score_func
+    n_features = args.n_features
     cross_validate = args.cross_validate
     overwrite = args.overwrite
+    save_misc = args.save_misc
     if phenotype_file.is_file() and feature_file.is_file():
         main(
             phenotype_file,
@@ -314,8 +358,11 @@ if __name__ == "__main__":
             random_state,
             results_folder,
             limit,
+            score_func,
+            n_features,
             cross_validate,
             overwrite,
+            save_misc,
         )
     else:
         raise FileNotFoundError("Phenotype file or feature file not found")
