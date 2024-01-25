@@ -20,6 +20,10 @@ from sklearn.metrics import (
 )
 from tqdm import tqdm
 
+from trait_prediction.feature_selection.reduction import (
+    remove_features_with_high_correlation,
+    remove_features_with_low_variance,
+)
 from trait_prediction.main import Phenotype, PhenotypeSet
 from trait_prediction.training import PhenotypePredictor
 from trait_prediction.utils import read_interpro_features, read_rast_features
@@ -196,6 +200,12 @@ def main(
     else:
         phenotypeset = PhenotypeSet.read_data(phenotype_file)
     features, id_dict = read_feature_data(feature_file, feature_type)
+    features, low_var_features1 = remove_features_with_low_variance(
+        features, threshold=VARIANCE_THRESHOLD
+    )
+    features, correlated_features_dict1 = remove_features_with_high_correlation(
+        features, threshold=CORRELATION_THRESHOLD
+    )
     pbar = tqdm(phenotypeset)
     for phenotype in pbar:
         pbar.set_description(f"Processing {phenotype}")
@@ -211,11 +221,11 @@ def main(
             output_folder.mkdir(parents=True, exist_ok=True)
 
         # process phenotype and feature data
+        pbar.set_description(f"Filtering {phenotype}")
         phenotype.set_feature_data(features, feature_type=feature_type)
-        # TODO: Add feature_selection_kbest here
         (
-            low_var_features,
-            correlated_features_dict,
+            low_var_features2,
+            correlated_features_dict2,
             low_score_features,
         ) = phenotype.filter_feature_data(
             variance_threshold=VARIANCE_THRESHOLD,
@@ -223,6 +233,11 @@ def main(
             score_func=score_func,
             n_features=n_features,
         )
+        low_var_features = set(low_var_features1 + low_var_features2)
+        correlated_features_dict = {
+            **correlated_features_dict1,
+            **correlated_features_dict2,
+        }
         # Skip if phenotype has less than 10 (default) samples
         if phenotype.phenotype_data.shape[0] <= PHENOTYPE_SAMPLE_SIZE_THRESHOLD:
             pbar.set_description(f"Skipping {phenotype}")
@@ -240,6 +255,7 @@ def main(
             continue
 
         # make classifier and predict
+        pbar.set_description(f"Predicting {phenotype}")
         categorical_feature_names = phenotype.feature_data.columns.to_list()
         clf = make_classifier(random_state, categorical_feature_names)
         phenotype_predictor = PhenotypePredictor(
@@ -260,6 +276,7 @@ def main(
             cv_scores = None
 
         # file writing
+        pbar.set_description(f"Saving {phenotype}")
         scores_file = output_folder / "scores.csv"
         scores.to_csv(scores_file, index=True, sep=",")
         if cv_scores is not None:
@@ -267,8 +284,12 @@ def main(
             cv_scores.to_csv(cv_scores_file, index=False, sep=",")
 
         # Save misc. files
-        phenotype_predictor.save(output_folder)
+        data["X_train"].to_csv(output_folder / "X_train.csv", index=True, sep=",")
+        data["X_test"].to_csv(output_folder / "X_test.csv", index=True, sep=",")
+        data["y_train"].to_csv(output_folder / "y_train.csv", index=True, sep=",")
+        data["y_test"].to_csv(output_folder / "y_test.csv", index=True, sep=",")
         if save_misc:
+            phenotype_predictor.save(output_folder)
             # save low var and high corr features to files
             with open(output_folder / "low_var_features.txt", "w") as fid:
                 for low_var_feature in low_var_features:
@@ -342,10 +363,10 @@ if __name__ == "__main__":
     phenotype_file = pathlib.Path(args.phenotype_file)
     feature_file = pathlib.Path(args.feature_file)
     feature_type = args.feature_type
-    random_state = int(args.random_state)
+    random_state = args.random_state
     results_folder = pathlib.Path(args.results_folder)
     limit = args.limit
-    score_func = args.score_func
+    score_func = args.score_func if args.score_func is not "None" else None
     n_features = args.n_features
     cross_validate = args.cross_validate
     overwrite = args.overwrite
