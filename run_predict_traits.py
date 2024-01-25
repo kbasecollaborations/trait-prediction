@@ -5,19 +5,19 @@ import subprocess
 
 DATASETS = ["ch", "pmi", "leaf"]
 FEATURES = [
-        "rast",
-        "kofam",
-        "uniref30",
-        "cluster30",
-        "eggnog_kegg",
-        "uniprot_trembl",
-        "cluster70",
-        "uniref90",
-        "kofam_modules",
-        "eggnog_seed",
-        "cluster50",
-        "cluster90",
-        ]
+    "rast",
+    "kofam",
+    "uniref30",
+    "cluster30",
+    "eggnog_kegg",
+    "uniprot_trembl",
+    "cluster70",
+    "uniref90",
+    "kofam_modules",
+    "eggnog_seed",
+    "cluster50",
+    "cluster90",
+]
 
 
 def main(
@@ -53,6 +53,10 @@ def main(
                 "generic",
                 "--random_state",
                 "42",
+                "--score_func",
+                "chi2",
+                "--n_features",
+                "1000",
             ]
             print(cmd)
             subprocess.run(cmd)
@@ -61,5 +65,5 @@ def main(
 if __name__ == "__main__":
     phenotypes_folder = pathlib.Path("data/processed/biolog/phenotypes/")
     features_folder = pathlib.Path("data/processed/biolog/features/")
-    outputs_folder = pathlib.Path("data/outputs/biolog/")
+    outputs_folder = pathlib.Path("data/outputs/biolog_1000/")
     main(phenotypes_folder, features_folder, outputs_folder)
