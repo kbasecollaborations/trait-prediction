@@ -2,7 +2,13 @@
 
 import numpy as np
 import pandas as pd
-from sklearn.feature_selection import SelectKBest, chi2, f_classif, mutual_info_classif
+from sklearn.feature_selection import (
+    SelectKBest,
+    VarianceThreshold,
+    chi2,
+    f_classif,
+    mutual_info_classif,
+)
 
 
 def remove_features_with_low_variance(
@@ -26,9 +32,11 @@ def remove_features_with_low_variance(
     list[str]
         List of the features with low variance that were removed
     """
-    var_filter = feature_df.var() > threshold  # type: ignore
-    removed_features = list(feature_df.columns[~var_filter])
-    return feature_df.loc[:, var_filter], removed_features
+    vt = VarianceThreshold(threshold=threshold)
+    vt.fit(feature_df)
+    mask = vt.get_support()
+    removed_features = list(feature_df.columns[~mask])
+    return feature_df.loc[:, list(mask)], removed_features
 
 
 def remove_features_with_high_correlation(
