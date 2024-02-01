@@ -47,8 +47,10 @@ if __name__ == "__main__":
     output_dir = pathlib.Path("data/outputs/biolog")
     input_dirs = [
         output_dir / "cluster30",
+        output_dir / "cluster50",
         output_dir / "cluster70",
         output_dir / "eggnog_kegg",
+        output_dir / "eggnog_seed",
         output_dir / "kofam",
         output_dir / "kofam_modules",
         output_dir / "rast",
