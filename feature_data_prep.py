@@ -7,14 +7,19 @@ from typing import Optional
 import pandas as pd
 
 
-def read_features(feature_file: pathlib.Path) -> pd.DataFrame:
+def read_features(feature_file: pathlib.Path, feature_name: str) -> pd.DataFrame:
     with open(feature_file, "r") as fid:
         header = fid.readline().strip().split("\t")
     dtypes = dict()
     dtypes[header[0]] = "str"
     for col in header[1:]:
-        dtypes[col] = "uint32"
-    feature_chunks = pd.read_csv(feature_file, sep="\t", dtype=dtypes, iterator=True, chunksize=100)
+        if feature_name == "kofam_modules":
+            dtypes[col] = "float64"
+        else:
+            dtypes[col] = "uint32"
+    feature_chunks = pd.read_csv(
+        feature_file, sep="\t", dtype=dtypes, iterator=True, chunksize=100
+    )
     feature_df = pd.concat(feature_chunks, ignore_index=True)
     feature_df.set_index(header[0], inplace=True)
     feature_df.fillna(0, inplace=True)
@@ -80,7 +85,7 @@ def main(
         if output_sub_dir.exists() and output_sub_dir.is_dir():
             print(f"Skipping {feature_name} because the data already exists")
             continue
-        feature_df = read_features(feature_file)
+        feature_df = read_features(feature_file, feature_name)
         for phenotype_name, phenotype_file in phenotype_data.items():
             print(
                 f"Creating {feature_name} feature file for {phenotype_name} phenotype"
