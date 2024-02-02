@@ -65,7 +65,9 @@ def _pearson_correlation_coefficient(X: np.ndarray) -> np.ndarray:
 
 
 @jit(nopython=True)
-def _find_columns_to_drop(corr_matrix: np.ndarray, threshold: float):
+def _find_columns_to_drop(
+    corr_matrix: np.ndarray, threshold: float
+) -> tuple[list, list]:
     """
     Find columns to drop based on correlation matrix and threshold.
 
@@ -78,7 +80,7 @@ def _find_columns_to_drop(corr_matrix: np.ndarray, threshold: float):
 
     Returns
     -------
-    tuple
+    tuple[list, list]
         A tuple containing a list of columns to drop and a list of correlated column groups.
     """
     # Initialize an empty set to hold indices of columns to drop
@@ -99,7 +101,7 @@ def _find_columns_to_drop(corr_matrix: np.ndarray, threshold: float):
     return list(cols_to_drop), corr_groups
 
 
-def _create_corr_group_dict(corr_groups: list, cols: pd.Index):
+def _create_corr_group_dict(corr_groups: list, cols: pd.Index) -> dict:
     """
     Convert list of sets of indices to dict of column names
 
