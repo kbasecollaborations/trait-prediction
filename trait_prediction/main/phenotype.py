@@ -7,8 +7,10 @@ import numpy as np
 import pandas as pd
 
 from ..feature_selection.reduction import (
-    feature_selection_kbest, remove_features_with_high_correlation,
-    remove_features_with_low_variance)
+    feature_selection_kbest,
+    remove_features_with_high_correlation,
+    remove_features_with_low_variance,
+)
 
 # TODO: Write test. use copilot to write test
 
@@ -69,12 +71,7 @@ class Phenotype:
         if self._common_genomes is None:
             return self._phenotype_data
         else:
-            return (
-                self._phenotype_data.loc[self._common_genomes]
-                .dropna()
-                .astype(int)
-                .copy()
-            )
+            return self._phenotype_data.loc[self._common_genomes].dropna().copy()
 
     def _parse_phenotype_data(self, raw_phenotype_data: pd.Series) -> pd.Series:
         """
@@ -90,7 +87,7 @@ class Phenotype:
         pd.Series
             Pandas Series containing the filtered phenotype data.
         """
-        undup_raw_phenotype_data = raw_phenotype_data.dropna()
+        undup_raw_phenotype_data = raw_phenotype_data.dropna().astype("uint8")
         return undup_raw_phenotype_data[
             ~undup_raw_phenotype_data.index.duplicated(keep="first")
         ]
@@ -138,7 +135,7 @@ class Phenotype:
         if self._feature_data is None:
             raise ValueError("Feature data not set for this phenotype")
         else:
-            return self._feature_data.dropna().astype(int).copy()
+            return self._feature_data.dropna().copy()
 
     def unset_feature_data(self) -> None:
         """
