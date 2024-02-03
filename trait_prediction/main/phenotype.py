@@ -147,8 +147,8 @@ class Phenotype:
 
     def filter_feature_data(
         self,
-        variance_threshold: float = 0.05,
-        correlation_treshold: float = 0.95,
+        variance_threshold: float | None = 0.05,
+        correlation_treshold: float | None = 0.95,
         score_func: str | None = None,
         n_features: int = 1000,
     ) -> tuple[list[str], dict[str, list[str]], list[str]]:
@@ -157,10 +157,10 @@ class Phenotype:
 
         Parameters
         ---------
-        variance_threshold : float
+        variance_threshold : float | None
             Threshold for the variance of the features.
             Default value 0.05
-        correlation_treshold : float
+        correlation_treshold : float | None
             Threshold for the correlation of the features.
             Default value 0.95
         score_func : str, optional
@@ -182,13 +182,23 @@ class Phenotype:
 
         """
         if self._feature_data is not None:
-            fd_high_var, low_var_features = remove_features_with_low_variance(
-                self._feature_data, variance_threshold
-            )
-            (
-                fd_high_var_low_corr,
-                corr_group_dict,
-            ) = remove_features_with_high_correlation(fd_high_var, correlation_treshold)
+            if variance_threshold is not None:
+                fd_high_var, low_var_features = remove_features_with_low_variance(
+                    self._feature_data, variance_threshold
+                )
+            else:
+                fd_high_var = self._feature_data
+                low_var_features = []
+            if correlation_treshold is not None:
+                (
+                    fd_high_var_low_corr,
+                    corr_group_dict,
+                ) = remove_features_with_high_correlation(
+                    fd_high_var, correlation_treshold
+                )
+            else:
+                fd_high_var_low_corr = fd_high_var
+                corr_group_dict = {}
             if score_func is not None:
                 fd_final, low_score_features = feature_selection_kbest(
                     fd_high_var_low_corr, self.phenotype_data, score_func, n_features
