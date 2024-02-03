@@ -3,6 +3,7 @@
 import numpy as np
 import pandas as pd
 from numba import jit
+from sklearn.decomposition import NMF, PCA
 from sklearn.feature_selection import (
     SelectKBest,
     VarianceThreshold,
@@ -203,3 +204,55 @@ def feature_selection_kbest(
     )
     removed_features = list(feature_df.columns[~kbest.get_support()])
     return kbest_feature_df, removed_features
+
+
+def feature_dimensionality_reduction(
+    feature_df: pd.DataFrame,
+    method: str,
+    n_components: int,
+    random_state: int,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Perform dimensionality reduction on the given feature DataFrame.
+
+    Parameters
+    ---------
+    feature_df : pd.DataFrame
+        Pandas DataFrame containing the features.
+    method : str
+        Supported values are 'NMF', 'PCA'
+    n_components : int
+        Number of components to reduce to.
+    random_state : int
+        Seed for the random number generator.
+
+    Returns
+    ------
+    reduced_feature_df : pd.DataFrame
+        Pandas DataFrame containing the features with reduced dimensionality.
+    components_df : pd.DataFrame
+        Pandas DataFrame containing the components of the dimensionality reduction.
+    """
+    if method == "NMF":
+        model = NMF(n_components=n_components, init="random", random_state=random_state)
+        prefix = "NMF"
+    elif method == "PCA":
+        model = PCA(n_components=n_components, random_state=random_state)
+        prefix = "PCA"
+    else:
+        raise ValueError(
+            f"method {method} is not supported. Supported methods are NMF, PCA"
+        )
+    reduced_features = model.fit_transform(feature_df)
+    reduced_feature_df = pd.DataFrame(
+        reduced_features,
+        columns=[f"{prefix}_{i}" for i in range(reduced_features.shape[1])],
+        index=feature_df.index,
+    )
+    components = model.components_
+    components_df = pd.DataFrame(
+        components,
+        columns=feature_df.columns,
+        index=[f"{prefix}_{i}" for i in range(components.shape[0])],
+    )
+    return reduced_feature_df, components_df
