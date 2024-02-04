@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import argparse
+import multiprocessing as mp
 import pathlib
 import subprocess
 
@@ -24,6 +26,11 @@ def main(
     phenotypes_folder: pathlib.Path,
     features_folder: pathlib.Path,
     outputs_folder: pathlib.Path,
+    score_func: str,
+    reduction_func: str,
+    n_features: int,
+    random_state: int,
+    n_cpus: int,
 ):
     for phenotype_file in phenotypes_folder.glob("*.tsv"):
         phenotype_name = phenotype_file.stem.removesuffix("_phenotypes")
@@ -41,6 +48,7 @@ def main(
             outputs_sub_dir = outputs_folder / feature_name
             outputs_sub_dir.mkdir(parents=True, exist_ok=True)
             print(f"Predicting traits for {phenotype_name} using {feature_name}")
+            # TODO: Run the run the ML with different seeds (random states)?
             cmd = [
                 "python",
                 "-W",
@@ -50,20 +58,70 @@ def main(
                 str(feature_file),
                 str(outputs_sub_dir),
                 "--feature_type",
-                "generic",
+                feature_name,
                 "--random_state",
-                "42",
+                str(random_state),
                 "--score_func",
-                "chi2",
+                score_func,  # "f_classif", "chi2", "mutual_info_classif"
+                "--reduction_func",
+                reduction_func,  # "PCA", "NMF"
                 "--n_features",
-                "1000",
+                str(n_features),
+                "--n_cpus",
+                str(n_cpus),
             ]
             print(cmd)
             subprocess.run(cmd)
 
 
 if __name__ == "__main__":
+    # args = outputs_folder, score_func, reduction_func,  n_features, random_state, n_cpus
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "outputs_folder", type=str, help="The folder to save the outputs"
+    )
+    parser.add_argument(
+        "--score_func",
+        type=str,
+        default="None",
+        help="Score function for feature selection",
+    )
+    parser.add_argument(
+        "--reduction_func",
+        type=str,
+        default="None",
+        help="Reduction function for feature dimensionality reduction",
+    )
+    parser.add_argument(
+        "--n_features",
+        type=int,
+        default=1000,
+        help="Limit the number of features based on score_func",
+    )
+    parser.add_argument("--random_state", type=int, default=42, help="Random state")
+    parser.add_argument(
+        "--n_cpus",
+        type=int,
+        default=-1,
+        help="Number of processes to use",
+    )
+    args = parser.parse_args()
+    outputs_folder = pathlib.Path(args.outputs_folder)
+    score_func = args.score_func
+    reduction_func = args.reduction_func
+    n_features = args.n_features
+    random_state = args.random_state
+    n_cpus = args.n_cpus if args.n_cpus > 0 else mp.cpu_count()
+
     phenotypes_folder = pathlib.Path("data/processed/biolog/phenotypes/")
     features_folder = pathlib.Path("data/processed/biolog/features/")
-    outputs_folder = pathlib.Path("data/outputs/biolog_1000/")
-    main(phenotypes_folder, features_folder, outputs_folder)
+    main(
+        phenotypes_folder,
+        features_folder,
+        outputs_folder,
+        score_func,
+        reduction_func,
+        n_features,
+        random_state,
+        n_cpus,
+    )
