@@ -116,10 +116,10 @@ class PhenotypePredictor:
                 majority_class_count = counter.most_common()[0][1]
                 minority_class_count = counter.most_common()[-1][1]
                 class_ratio = minority_class_count / majority_class_count
-                # perform sampling if class_ratio is less than 0.1
-                if class_ratio <= 0.1:
-                    # if minority_class_count has less than 100 data points
-                    if minority_class_count < 100:
+                # NOTE: perform sampling if class_ratio is less than 0.2
+                if class_ratio <= 0.2:
+                    # FIXME: This parameter should be optimized
+                    if minority_class_count <= 25:
                         # then we have a small minority class so we do oversampling
                         self._sampler = RandomOverSampler(
                             random_state=self.random_state
@@ -131,8 +131,8 @@ class PhenotypePredictor:
                         )
                         sampling_type = "undersample"
                 else:
-                    self._sampler = RandomUnderSampler(random_state=self.random_state)
-                    sampling_type = "undersample"
+                    self._sampler = None
+                    sampling_type = None
             elif imbalanced == "undersample":
                 # NOTE: this removes samples from the majority class
                 self._sampler = RandomUnderSampler(random_state=self.random_state)
@@ -145,10 +145,10 @@ class PhenotypePredictor:
                 raise ValueError(
                     "imbalanced must be 'auto', 'undersample', or 'oversample'."
                 )
-            # NOTE: Indices of the training dataset are lost after sampling
-            self._X_train, self._y_train = self._sampler.fit_resample(  # type: ignore
-                self._X_train, self._y_train
-            )
+            if self._sampler is not None:
+                self._X_train, self._y_train = self._sampler.fit_resample(  # type: ignore
+                    self._X_train, self._y_train
+                )
         self._data_prep = True
         self._sampling_params = {
             "test_size": test_size,
