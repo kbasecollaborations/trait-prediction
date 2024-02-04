@@ -67,7 +67,7 @@ def read_feature_data(
     feature_type: str,
     bool_conversion: bool = True,
     dtype: str | None = "int64",
-) -> tuple[pd.DataFrame, dict]:
+) -> pd.DataFrame:
     """
     Read the feature data.
 
@@ -98,8 +98,7 @@ def read_feature_data(
     features = read_generic_features(
         feature_file, bool_conversion=bool_conversion, dtype=dtype
     )
-    id_dict = {v: v for v in features.columns}
-    return features, id_dict
+    return features
 
 
 def is_data_good(phenotype_data: pd.Series) -> bool:
@@ -216,7 +215,6 @@ def perform_cv(phenotype_predictor: PhenotypePredictor, n_splits: int):
 def plot_shap_summary(
     predictor: PhenotypePredictor,
     feature_data: pd.DataFrame,
-    id_dict: dict,
     output_file: str,
 ) -> pd.Series:
     """
@@ -228,13 +226,11 @@ def plot_shap_summary(
         PhenotypePredictor object.
     feature_data : pd.DataFrame
         Feature data.
-    id_dict : dict
-        Maps annotation ids to annotation names for feature data.
     output_file : str
         Output file path.
     """
     clf = predictor.classifier
-    feature_labels = [id_dict[c] for c in feature_data.columns]
+    feature_labels = list(feature_data.columns)
     explainer = shap.Explainer(clf)
     shap_values = explainer(feature_data)
     shap_values.feature_names = feature_labels
@@ -257,7 +253,6 @@ def save_data(
     data: dict,
     phenotype_predictor: PhenotypePredictor,
     output_folder: pathlib.Path,
-    id_dict: dict,
     low_var_features: list[str],
     correlated_features_dict: dict,
     low_score_features: list[str],
@@ -288,7 +283,7 @@ def save_data(
     # Step 3: Save SHAP summary plot and top features
     shap_summary_plot_file = str(output_folder / "shap_summary_plot.png")
     importance_df = plot_shap_summary(
-        phenotype_predictor, phenotype_fd, id_dict, shap_summary_plot_file
+        phenotype_predictor, phenotype_fd, shap_summary_plot_file
     )
     importance_df.to_csv(output_folder / "shap_features.csv", index=True, sep=",")
 
@@ -365,13 +360,11 @@ def train_model(params: dict) -> None:
         cv_scores = None
 
     # Step 5: File writing
-    id_dict = params["id_dict"]
     save_data(
         phenotype_fd,
         data,
         phenotype_predictor,
         output_folder,
-        id_dict,
         low_var_features,
         correlated_features_dict,
         low_score_features,
@@ -406,7 +399,7 @@ def main(
         phenotypeset = PhenotypeSet.limit(PhenotypeSet.read_data(phenotype_file), limit)
     else:
         phenotypeset = PhenotypeSet.read_data(phenotype_file)
-    features, id_dict = read_feature_data(feature_file, feature_type)
+    features = read_feature_data(feature_file, feature_type)
     features, low_var_features = remove_features_with_low_variance(
         features, threshold=VARIANCE_THRESHOLD
     )
@@ -442,7 +435,6 @@ def main(
             "overwrite": overwrite,
             "features": features,
             "phenotype": phenotype,
-            "id_dict": id_dict,
         }
         mp_args.append(mp_arg)
     with mp.Pool(processes=n_cpus) as p:
@@ -468,13 +460,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--score_func",
         type=str,
-        default=None,
+        default="None",
         help="Score function for feature selection",
     )
     parser.add_argument(
         "--reduction_func",
         type=str,
-        default=None,
+        default="None",
         help="Reduction function for feature dimensionality reduction",
     )
     parser.add_argument(
@@ -506,8 +498,8 @@ if __name__ == "__main__":
     random_state = args.random_state
     results_folder = pathlib.Path(args.results_folder)
     limit = args.limit
-    score_func = args.score_func if args.score_func is not "None" else None
-    reduction_func = args.reduction_func if args.reduction_func is not "None" else None
+    score_func = args.score_func if args.score_func != "None" else None
+    reduction_func = args.reduction_func if args.reduction_func != "None" else None
     if score_func is not None and reduction_func is not None:
         raise ValueError("Both score_func and reduction_func cannot be set")
     n_features = args.n_features
