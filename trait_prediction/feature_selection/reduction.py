@@ -210,7 +210,7 @@ def feature_dimensionality_reduction(
     feature_df: pd.DataFrame,
     method: str,
     n_components: int,
-    random_state: int,
+    random_state: int | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Perform dimensionality reduction on the given feature DataFrame.
@@ -223,8 +223,9 @@ def feature_dimensionality_reduction(
         Supported values are 'NMF', 'PCA'
     n_components : int
         Number of components to reduce to.
-    random_state : int
+    random_state : int | None
         Seed for the random number generator.
+        Default value is None.
 
     Returns
     ------

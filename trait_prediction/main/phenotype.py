@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ..feature_selection.reduction import (
+    feature_dimensionality_reduction,
     feature_selection_kbest,
     remove_features_with_high_correlation,
     remove_features_with_low_variance,
@@ -210,6 +211,44 @@ class Phenotype:
         else:
             raise ValueError("Feature data not set for this phenotype")
         return low_var_features, corr_group_dict, low_score_features
+
+    def reduce_feature_data(
+        self,
+        method: str,
+        n_components: int,
+        random_state: int | None = None,
+    ) -> pd.DataFrame:
+        """
+        Reduces the dimensionality of the feature data for this phenotype.
+
+        Parameters
+        ----------
+        method : str
+            Method to use for dimensionality reduction.
+            Supported methods are 'PCA' and 'NMF'
+        n_components : int
+            Number of components to reduce to.
+        random_state : int | None, optional
+            Random seed value, by default None
+
+        Returns
+        -------
+        components_df : pd.DataFrame
+            Pandas DataFrame containing the components of the dimensionality reduction.
+
+        Raises
+        ------
+        ValueError
+            If feature data is not set for this phenotype
+        """
+        if self._feature_data is not None:
+            reduced_feature_df, components_df = feature_dimensionality_reduction(
+                self._feature_data, method, n_components, random_state=random_state
+            )
+            self._feature_data = reduced_feature_df
+            return components_df
+        else:
+            raise ValueError("Feature data not set for this phenotype")
 
     def select_important_features(
         self, feature_importances: np.ndarray, k: int
