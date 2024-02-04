@@ -2,6 +2,7 @@
 
 import pathlib
 import pickle
+from math import isclose
 from typing import Optional
 
 import numpy as np
@@ -14,7 +15,6 @@ from sklearn.model_selection import cross_validate, train_test_split
 
 from ..main import Phenotype
 
-# TODO: hyperparam optimization using optuna
 # TODO: Use logging module instead of print statements
 
 
@@ -267,7 +267,7 @@ class PhenotypePredictor:
             "roc_auc",
             "matthews_corrcoef",
         ),
-    ) -> tuple[pd.DataFrame, list]:
+    ) -> tuple[pd.DataFrame, list, dict]:
         """
         Perform cross validation using StratifiedKFold and return scores
 
@@ -284,37 +284,31 @@ class PhenotypePredictor:
 
         Returns
         ------
-        cv_df: pd.DataFrame
+        scores_df: pd.DataFrame
             Cross validation scores
         estimators: list
             List of estimators for each fold
+        indicies: dict
+            Dictionary containing the training and test indices for each fold
         """
         if self._data_prep:
-            scores = cross_validate(
+            cv_results = cross_validate(
                 self.classifier,
                 self._X_train,  # type: ignore
                 self._y_train,
                 scoring=scoring,
-                cv=n_splits,
+                cv=n_splits,  # this is StratifiedKFold if y is binary or multiclass
                 n_jobs=n_jobs,
                 return_estimator=True,
+                return_indices=True,  # type: ignore
             )
         else:
             raise ValueError("Data has not been prepared. Call `split_data` first.")
-        scoring_metrics = [x for x in scores.keys() if x.startswith("test_")]
-        data = []
-        for metric in scoring_metrics:
-            for i, score in enumerate(scores[metric]):
-                data.append(
-                    {
-                        "metric": metric.strip("test_"),
-                        "score": score,
-                        "fold": i + 1,
-                    }
-                )
-        cv_df = pd.DataFrame(data)
-        estimators = scores["estimator"]
-        return cv_df, estimators
+        scores = {
+            k.lstrip("test_"): v for k, v in cv_results.items() if k.startswith("test_")
+        }
+        scores_df = pd.DataFrame(scores)
+        return scores_df, cv_results["estimator"], cv_results["indices"]
 
     @staticmethod
     def plot_cross_validation(scores: pd.DataFrame):
