@@ -235,7 +235,12 @@ def feature_dimensionality_reduction(
         Pandas DataFrame containing the components of the dimensionality reduction.
     """
     if method == "NMF":
-        model = NMF(n_components=n_components, init="random", random_state=random_state)
+        max_dim = min(feature_df.shape)
+        if n_components > max_dim:
+            raise ValueError(
+                f"n_components {n_components} is greater than the maximum dimension {max_dim}"
+            )
+        model = NMF(n_components=n_components, init="nndsvd", random_state=random_state)
         prefix = "NMF"
     elif method == "PCA":
         model = PCA(n_components=n_components, random_state=random_state)
