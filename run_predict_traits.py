@@ -32,7 +32,7 @@ def main(
     random_state: int,
     n_cpus: int,
 ):
-    for phenotype_file in phenotypes_folder.glob("*.tsv"):
+    for ind, phenotype_file in enumerate(phenotypes_folder.glob("*.tsv")):
         phenotype_name = phenotype_file.stem.removesuffix("_phenotypes")
         if phenotype_name != "ch":
             print(f"Skipping phenotype {phenotype_name}")
@@ -47,8 +47,8 @@ def main(
             )
             outputs_sub_dir = outputs_folder / feature_name
             outputs_sub_dir.mkdir(parents=True, exist_ok=True)
-            print(f"Predicting traits for {phenotype_name} using {feature_name}")
             # TODO: Run the run the ML with different seeds (random states)?
+            print(f"{ind}. Predicting traits for {phenotype_name} using {feature_name}")
             cmd = [
                 "python",
                 "-W",
@@ -69,9 +69,15 @@ def main(
                 str(n_features),
                 "--n_cpus",
                 str(n_cpus),
+                # "--save_all",
             ]
-            print(cmd)
+            print(f"Output folder: {outputs_sub_dir}")
+            print(
+                f"Score func: {score_func}, Reduction func: {reduction_func}, # of features: {n_features}"
+            )
+            print(f"Random state: {random_state}, Number of CPUs: {n_cpus}")
             subprocess.run(cmd)
+            print("\n")
 
 
 if __name__ == "__main__":
