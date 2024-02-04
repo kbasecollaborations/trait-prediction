@@ -36,7 +36,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 # For binary feature, v = p(1-p), keep between (0.01-0.05)
-VARIANCE_THRESHOLD = 0.05  # if v=0.01, p=0.01 or 0.99
+VARIANCE_THRESHOLD = 0.01  # if v=0.01, p=0.01 or 0.99
 CORRELATION_THRESHOLD = 0.95
 TEST_SIZE = 0.3
 N_SPLITS = 5
