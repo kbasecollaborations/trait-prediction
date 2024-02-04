@@ -24,6 +24,7 @@ from sklearn.metrics import (
 from tqdm import tqdm
 
 from trait_prediction.feature_selection.reduction import (
+    feature_dimensionality_reduction,
     remove_features_with_high_correlation,
     remove_features_with_low_variance,
 )
@@ -142,6 +143,7 @@ def make_classifier(random_state: int, categorical_feature_names: list[str] | No
     ------
     Classifier object.
     """
+    # TODO: Might have to set ncpus
     clf = CatBoostClassifier(
         iterations=1000,
         depth=8,
@@ -252,7 +254,6 @@ def plot_shap_summary(
 
 def save_data(
     phenotype_fd: pd.DataFrame,
-    components_df: pd.DataFrame | None,
     data: dict,
     phenotype_predictor: PhenotypePredictor,
     output_folder: pathlib.Path,
@@ -264,16 +265,15 @@ def save_data(
     cv_scores: pd.DataFrame | None,
 ):
     # Step1: Save the feature and training data
-    if components_df is not None:
-        with gzip.open(output_folder / "components.tsv.gz", "wt") as gzfile:
-            components_df.to_csv(gzfile, index=True, sep="\t")
     with open(output_folder / "low_var_features.txt", "w") as fid:
         fid.write("\n".join(low_var_features))
     with gzip.open(output_folder / "corr_features.json.gz", "wt") as gzfile:
-        gzfile.write(json.dumps(correlated_features_dict).encode("utf-8"))  # type: ignore
+        json.dump(correlated_features_dict, gzfile)
     with open(output_folder / "low_score_features.txt", "w") as fid:
         fid.write("\n".join(low_score_features))
-    for key in ["X_train", "X_test", "y_train", "y_test"]:
+    with open(output_folder / "features.txt", "w") as fid:
+        fid.write("\n".join(phenotype_fd.columns))
+    for key in ["y_train", "y_test"]:
         data[key].to_csv(output_folder / f"{key}.tsv", index=True, sep="\t")
 
     # Step 2: Save the scores
@@ -322,8 +322,6 @@ def train_model(params: dict) -> None:
     reduction_func = params["reduction_func"]
     n_features = params["n_features"]
     random_state = params["random_state"]
-    phenotype_pd = phenotype.phenotype_data
-    phenotype_fd = phenotype.feature_data
     phenotype.set_feature_data(features, feature_type=feature_type)
     (
         low_var_features,
@@ -335,19 +333,15 @@ def train_model(params: dict) -> None:
         score_func=score_func,
         n_features=n_features,
     )
-    if reduction_func is not None:
-        components_df = phenotype.reduce_feature_data(
-            reduction_func, n_components=n_features, random_state=random_state
-        )
-    else:
-        components_df = None
     # Check data
+    phenotype_pd = phenotype.phenotype_data
+    phenotype_fd = phenotype.feature_data
     if not is_data_good(phenotype_pd):
         return None
 
     # Step 4: Make classifier and predict
     cross_validate = params["cross_validate"]
-    if feature_type in FLOAT_FEATURES:
+    if feature_type in FLOAT_FEATURES or reduction_func is not None:
         categorical_feature_names = None
     else:
         categorical_feature_names = []
@@ -372,10 +366,8 @@ def train_model(params: dict) -> None:
 
     # Step 5: File writing
     id_dict = params["id_dict"]
-    # FIXME: Change order of arguments and number
     save_data(
         phenotype_fd,
-        components_df,
         data,
         phenotype_predictor,
         output_folder,
@@ -421,11 +413,22 @@ def main(
     features, correlated_features_dict = remove_features_with_high_correlation(
         features, threshold=CORRELATION_THRESHOLD
     )
+    if reduction_func is not None:
+        features, components_df = feature_dimensionality_reduction(
+            features,
+            method=reduction_func,
+            n_components=n_features,
+            random_state=random_state,
+        )
+    else:
+        components_df = None
     features.to_csv(results_folder / "features.tsv", sep="\t", index=True)
+    if components_df is not None:
+        components_df.to_csv(results_folder / "components.tsv", index=True, sep="\t")
     with open(results_folder / "low_var_features.txt", "w") as fid:
         fid.write("\n".join(low_var_features))
     with gzip.open(results_folder / "corr_features.json.gz", "wt") as gzfile:
-        gzfile.write(json.dumps(correlated_features_dict).encode("utf-8"))  # type: ignore
+        json.dump(correlated_features_dict, gzfile)
     mp_args = []
     for phenotype in phenotypeset:
         mp_arg = {
@@ -443,7 +446,9 @@ def main(
         }
         mp_args.append(mp_arg)
     with mp.Pool(processes=n_cpus) as p:
-        results = tqdm(p.imap(train_model, mp_args), total=len(mp_args))
+        results = []
+        for result in tqdm(p.imap(train_model, mp_args), total=len(mp_args)):
+            results.append(result)
 
 
 if __name__ == "__main__":
@@ -508,7 +513,7 @@ if __name__ == "__main__":
     n_features = args.n_features
     cross_validate = args.cross_validate
     overwrite = args.overwrite
-    n_cpus = args.ncpus if args.n_cpus > 0 else mp.cpu_count()
+    n_cpus = args.n_cpus if args.n_cpus > 0 else mp.cpu_count()
     if phenotype_file.is_file() and feature_file.is_file():
         main(
             phenotype_file,
