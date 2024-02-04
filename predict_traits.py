@@ -348,8 +348,9 @@ def train_model(params: dict) -> None:
                 categorical_feature_names.append(col)
     clf = make_classifier(random_state, categorical_feature_names)
     phenotype_predictor = PhenotypePredictor(phenotype, clf, random_state=random_state)
+    # TODO: Enable imbalanced sampling again
     data = phenotype_predictor.split_data(
-        test_size=TEST_SIZE, stratify=True, imbalanced="auto"
+        test_size=TEST_SIZE, stratify=True, imbalanced=None
     )
     phenotype_predictor.fit()
     y_pred = phenotype_predictor.predict()
