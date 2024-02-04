@@ -258,6 +258,7 @@ def save_data(
     low_score_features: list[str],
     scores: pd.DataFrame,
     cv_scores: pd.DataFrame | None,
+    save_all: bool,
 ):
     # Step1: Save the feature and training data
     with open(output_folder / "low_var_features.txt", "w") as fid:
@@ -271,14 +272,15 @@ def save_data(
     for key in ["y_train", "y_test"]:
         data[key].to_csv(output_folder / f"{key}.tsv", index=True, sep="\t")
 
-    # Step 2: Save the scores
+    # Step 2: Save the scores and model
     scores_file = output_folder / "scores.csv"
     scores.to_csv(scores_file, index=True, sep=",")
     if cv_scores is not None:
         cv_scores_file = output_folder / "cv_scores.csv"
         cv_scores.to_csv(cv_scores_file, index=False, sep=",")
-
-    # phenotype_predictor.save(output_folder)
+    if save_all:
+        phenotype_predictor.classifier.save_model(output_folder / "model.cbm")
+        phenotype_predictor.save(output_folder)
 
     # Step 3: Save SHAP summary plot and top features
     shap_summary_plot_file = str(output_folder / "shap_summary_plot.png")
@@ -360,6 +362,7 @@ def train_model(params: dict) -> None:
         cv_scores = None
 
     # Step 5: File writing
+    save_all = params["save_all"]
     save_data(
         phenotype_fd,
         data,
@@ -370,6 +373,7 @@ def train_model(params: dict) -> None:
         low_score_features,
         scores,
         cv_scores,
+        save_all,
     )
 
     # Unset the feature data to reduce memory usage
@@ -392,8 +396,9 @@ def main(
     reduction_func: str | None,
     n_features: int,
     cross_validate: bool,
-    overwrite: bool,
     n_cpus: int,
+    save_all: bool,
+    overwrite: bool,
 ) -> None:
     if limit is not None:
         phenotypeset = PhenotypeSet.limit(PhenotypeSet.read_data(phenotype_file), limit)
@@ -433,6 +438,7 @@ def main(
             "n_features": n_features,
             "cross_validate": cross_validate,
             "overwrite": overwrite,
+            "save_all": save_all,
             "features": features,
             "phenotype": phenotype,
         }
@@ -481,15 +487,20 @@ if __name__ == "__main__":
         help="Perform cross validation",
     )
     parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite existing results",
-    )
-    parser.add_argument(
         "--n_cpus",
         type=int,
         default=-1,
         help="Number of processes to use",
+    )
+    parser.add_argument(
+        "--save_all",
+        action="store_true",
+        help="Save model and phenotype pkl files",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing results",
     )
     args = parser.parse_args()
     phenotype_file = pathlib.Path(args.phenotype_file)
@@ -504,8 +515,9 @@ if __name__ == "__main__":
         raise ValueError("Both score_func and reduction_func cannot be set")
     n_features = args.n_features
     cross_validate = args.cross_validate
-    overwrite = args.overwrite
     n_cpus = args.n_cpus if args.n_cpus > 0 else mp.cpu_count()
+    save_all = args.save_all
+    overwrite = args.overwrite
     if phenotype_file.is_file() and feature_file.is_file():
         main(
             phenotype_file,
@@ -518,8 +530,9 @@ if __name__ == "__main__":
             reduction_func,
             n_features,
             cross_validate,
-            overwrite,
             n_cpus,
+            save_all,
+            overwrite,
         )
     else:
         raise FileNotFoundError("Phenotype file or feature file not found")
