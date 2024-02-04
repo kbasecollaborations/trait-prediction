@@ -100,13 +100,19 @@ class PhenotypePredictor:
             y_stratify = self._y
         else:
             y_stratify = None
-        self._X_train, self._X_test, self._y_train, self._y_test = train_test_split(
-            self._X,
-            self._y,
-            test_size=test_size,
-            random_state=self.random_state,
-            stratify=y_stratify,
-        )
+        if np.isclose(test_size, 0.0):
+            self._X_train = self._X.copy()
+            self._y_train = self._y.copy()
+            self._X_test = pd.DataFrame()
+            self._y_test = pd.Series()
+        else:
+            self._X_train, self._X_test, self._y_train, self._y_test = train_test_split(
+                self._X,
+                self._y,
+                test_size=test_size,
+                random_state=self.random_state,
+                stratify=y_stratify,
+            )
         sampling_type = None
         if imbalanced is not None:
             if imbalanced == "auto":
@@ -121,6 +127,7 @@ class PhenotypePredictor:
                     # FIXME: This parameter should be optimized
                     if minority_class_count <= 25:
                         # then we have a small minority class so we do oversampling
+                        # TODO: Replace this with SMOTEN?
                         self._sampler = RandomOverSampler(
                             random_state=self.random_state
                         )
