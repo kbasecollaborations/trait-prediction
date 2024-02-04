@@ -1,5 +1,7 @@
 """Module that contains functions for eliminating features"""
 
+from warnings import warn
+
 import numpy as np
 import pandas as pd
 from numba import jit
@@ -237,10 +239,13 @@ def feature_dimensionality_reduction(
     if method == "NMF":
         max_dim = min(feature_df.shape)
         if n_components > max_dim:
-            raise ValueError(
-                f"n_components {n_components} is greater than the maximum dimension {max_dim}"
+            warn(
+                f"n_components {n_components} is greater than the maximum dimension {max_dim} using {max_dim} instead"
             )
-        model = NMF(n_components=n_components, init="nndsvd", random_state=random_state)
+            n_comps = max_dim
+        else:
+            n_comps = n_components
+        model = NMF(n_components=n_comps, init="nndsvd", random_state=random_state)
         prefix = "NMF"
     elif method == "PCA":
         model = PCA(n_components=n_components, random_state=random_state)
