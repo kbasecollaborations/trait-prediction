@@ -50,7 +50,7 @@ def main(
             outputs_sub_dir = outputs_folder / feature_name
             outputs_sub_dir.mkdir(parents=True, exist_ok=True)
             print(
-                f"(i={ind_i+1};j={ind_j+1}/{len(FEATURES)}). Predicting traits for {phenotype_name} using {feature_name}"
+                f"(i={ind_i+1};j={ind_j+1}/{len(FEATURES)}): Predicting traits for {phenotype_name} using {feature_name}"
             )
             cmd = [
                 "python",

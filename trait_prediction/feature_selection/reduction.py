@@ -4,7 +4,7 @@ from warnings import warn
 
 import numpy as np
 import pandas as pd
-from numba import jit
+from numba import jit, prange, typed, types
 from sklearn.decomposition import NMF, PCA
 from sklearn.feature_selection import (
     SelectKBest,
@@ -43,89 +43,37 @@ def remove_features_with_low_variance(
     return feature_df.loc[:, list(mask)], removed_features
 
 
-def _pearson_correlation_coefficient(X: np.ndarray) -> np.ndarray:
+@jit(nopython=True, parallel=True)
+def _find_corr_cols_todrop(matrix: np.ndarray, threshold=0.95) -> list[list[int]]:
     """
-    Calculate the Pearson correlation coefficient of matrix X.
+    Find columns to drop based on correlation threshold
 
     Parameters
     ----------
-    X : numpy array (MxN)
-        The input matrix with M rows (number of features) and N columns (number of data points).
+    matrix : np.ndarray
+        2-dimensional matrix. M (data points) x N (features)
+    threshold : float, optional
+        Correlation threshold, by default 0.95
 
     Returns
     -------
-    pcc : numpy array (MxM)
-        The Pearson correlation coefficient matrix, where each element (i, j) represents the correlation
-        between feature i and feature j in the input matrix X.
+    corr_cols
+        List of lists containing correlated columns for each columns
     """
-    M, N = X.shape[0], X.shape[1]  # number of features, number of data points
-    X_mean = np.mean(X, axis=1).reshape(M, 1)
-    X_std = np.std(X, axis=1).reshape(M, 1)
-    X_tilde = (X - X_mean) / X_std
-    pcc = X_tilde @ X_tilde.T / N
-    np.fill_diagonal(pcc, 1, wrap=False)
-    return pcc
-
-
-@jit(nopython=True)
-def _find_columns_to_drop(
-    corr_matrix: np.ndarray, threshold: float
-) -> tuple[list, list]:
-    """
-    Find columns to drop based on correlation matrix and threshold.
-
-    Parameters
-    ----------
-    corr_matrix : numpy.ndarray
-        The correlation matrix.
-    threshold : float
-        The correlation threshold.
-
-    Returns
-    -------
-    tuple[list, list]
-        A tuple containing a list of columns to drop and a list of correlated column groups.
-    """
-    # Initialize an empty set to hold indices of columns to drop
-    cols_to_drop = set()
-    corr_groups = []
-    # Get the number of columns in the correlation matrix
-    n_cols = corr_matrix.shape[1]
-    # Iterate over columns
-    for i in range(n_cols):
-        corr_set = set()
-        for j in range(i + 1, n_cols):
-            # If correlation is above the threshold and not already in the list
-            if corr_matrix[i, j] >= threshold:
-                corr_set.add(j)
-                if j not in cols_to_drop:
-                    cols_to_drop.add(j)
-        corr_groups.append(corr_set)
-    return list(cols_to_drop), corr_groups
-
-
-def _create_corr_group_dict(corr_groups: list, cols: pd.Index) -> dict:
-    """
-    Convert list of sets of indices to dict of column names
-
-    Parameters
-    ----------
-    corr_groups : list
-        List of sets representing correlated groups.
-    cols : pd.Index
-        List of column names.
-
-    Returns
-    -------
-    dict
-        Dictionary mapping column names to lists of correlated columns.
-    """
-    corr_group_dict = {}
-    for i, corr_group in enumerate(corr_groups):
-        if len(corr_group) < 1:
-            continue
-        corr_group_dict[cols[i]] = list(cols[list(corr_group)])
-    return corr_group_dict
+    m = matrix.shape[0]
+    n = matrix.shape[1]
+    corr_cols = [typed.List.empty_list(types.int64) for _ in range(n)]
+    for i in prange(n):
+        to_drop = typed.List.empty_list(types.int64)
+        for j in range(i + 1, n):
+            xi, xj = matrix[:, i], matrix[:, j]
+            mean_i, mean_j = np.mean(xi), np.mean(xj)
+            std_i, std_j = np.std(xi), np.std(xj)
+            corr = np.sum((xi - mean_i) * (xj - mean_j)) / (m * std_i * std_j)  # type: ignore
+            if corr >= threshold:
+                to_drop.append(j)
+        corr_cols[i] = to_drop
+    return corr_cols
 
 
 def remove_features_with_high_correlation(
@@ -149,13 +97,22 @@ def remove_features_with_high_correlation(
     dict[str, list[str]]
         Dictionary of the features with high correlation that were removed
     """
-    # Calculate the correlation matrix and convert it to a NumPy array
-    corr_matrix = np.abs(_pearson_correlation_coefficient(feature_df.to_numpy().T))
-    # Find indices of columns to drop
-    to_drop, corr_groups = _find_columns_to_drop(corr_matrix, threshold)
-    corr_group_dict = _create_corr_group_dict(corr_groups, feature_df.columns)
+    # Get correlated columns
+    corr_cols = _find_corr_cols_todrop(feature_df.to_numpy(), threshold)
+    # Find columns to drop
+    cols_to_drop = set()
+    corr_group_dict = dict()
+    cols = feature_df.columns
+    for i, corr_col in enumerate(corr_cols):
+        if len(corr_col) < 1:
+            continue
+        cols_to_drop.update(corr_col)
+        corr_group_dict[cols[i]] = list(cols[corr_col])
     # Drop the columns from the DataFrame
-    return feature_df.drop(feature_df.columns[to_drop], axis=1), corr_group_dict
+    return (
+        feature_df.drop(feature_df.columns[list(cols_to_drop)], axis=1),
+        corr_group_dict,
+    )
 
 
 def feature_selection_kbest(
