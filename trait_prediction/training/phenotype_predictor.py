@@ -171,7 +171,7 @@ class PhenotypePredictor:
         else:
             raise ValueError("Data has not been prepared. Call `split_data` first.")
 
-    def predict(self, X: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def predict(self, X: Optional[pd.DataFrame] = None) -> pd.Series:
         """
         Predict the phenotype of the given feature data.
 
@@ -184,7 +184,7 @@ class PhenotypePredictor:
 
         Returns
         ------
-        pd.DataFrame
+        pd.Series
             Pandas DataFrame containing the predicted phenotype.
         """
         if X is not None:
