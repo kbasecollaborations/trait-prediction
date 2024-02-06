@@ -302,11 +302,15 @@ def save_data(
         cv_score_df["category"] = phenotype_predictor.phenotype.category
         cv_scores_file = output_folder / "cv_scores.csv"
         cv_score_df.to_csv(cv_scores_file, index=True, sep=",")
-        train_genomes = pd.DataFrame([phenotype_index[i] for i in cv_indices["train"]])
+        train_genomes = pd.DataFrame(
+            [phenotype_index[i] for i in cv_indices["train"]], dtype=str
+        )
         train_genomes.to_csv(
             output_folder / "cv_train_genomes.csv", index=True, sep=","
         )
-        val_genomes = pd.DataFrame([phenotype_index[i] for i in cv_indices["test"]])
+        val_genomes = pd.DataFrame(
+            [phenotype_index[i] for i in cv_indices["test"]], dtype=str
+        )
         val_genomes.to_csv(output_folder / "cv_val_genomes.csv", index=True, sep=",")
     # Step 2c: Save model and phenotype data
     if save_all:
