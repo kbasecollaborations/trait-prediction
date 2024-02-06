@@ -5,7 +5,8 @@ import multiprocessing as mp
 import pathlib
 import subprocess
 
-DATASETS = ["ch", "pmi", "leaf"]
+# DATASETS = ["ch", "pmi", "leaf"]
+DATASETS = ["ch"]
 FEATURES = [
     "rast",
     "kofam",
@@ -30,11 +31,12 @@ def main(
     reduction_func: str,
     n_features: int,
     random_state: int,
+    cross_validate: bool,
     n_cpus: int,
 ):
     for ind_i, phenotype_file in enumerate(phenotypes_folder.glob("*.tsv")):
         phenotype_name = phenotype_file.stem.removesuffix("_phenotypes")
-        if phenotype_name != "ch":
+        if phenotype_name not in DATASETS:
             print(f"Skipping phenotype {phenotype_name}")
             continue
         for ind_j, feature in enumerate(FEATURES):
@@ -72,6 +74,8 @@ def main(
                 str(n_cpus),
                 # "--save_all",
             ]
+            if cross_validate:
+                cmd += "--cross_validate"
             print(f"Output folder: {outputs_sub_dir}")
             print(
                 f"Score func: {score_func}, Reduction func: {reduction_func}, # of features: {n_features}"
@@ -107,17 +111,24 @@ if __name__ == "__main__":
     )
     parser.add_argument("--random_state", type=int, default=42, help="Random state")
     parser.add_argument(
+        "--cross_validate",
+        action="store_true",
+        help="Perform cross validation",
+    )
+    parser.add_argument(
         "--n_cpus",
         type=int,
         default=-1,
         help="Number of processes to use",
     )
+    # TODO: Add cross_validation parameter
     args = parser.parse_args()
     outputs_folder = pathlib.Path(args.outputs_folder)
     score_func = args.score_func
     reduction_func = args.reduction_func
     n_features = args.n_features
     random_state = args.random_state
+    cross_validate = args.cross_validate
     n_cpus = args.n_cpus if args.n_cpus > 0 else mp.cpu_count()
 
     phenotypes_folder = pathlib.Path("data/processed/biolog/phenotypes/")
@@ -130,5 +141,6 @@ if __name__ == "__main__":
         reduction_func,
         n_features,
         random_state,
+        cross_validate,
         n_cpus,
     )

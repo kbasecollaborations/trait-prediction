@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import argparse
-import gc
 import gzip
 import json
 import multiprocessing as mp
@@ -35,14 +34,24 @@ from trait_prediction.utils.read_features import read_generic_features
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
-# For binary feature, v = p(1-p), keep between (0.01-0.05)
+# NOTE: For binary feature, v = p(1-p), keep between (0.01-0.05)
 VARIANCE_THRESHOLD = 0.01  # if v=0.01, p=0.01 or 0.99
 CORRELATION_THRESHOLD = 0.95
-TEST_SIZE = 0.3
+IMBALANCED = None
+TEST_SIZE = 0.3  # NOTE: enabling cross-validation
 N_SPLITS = 5
 PHENOTYPE_SAMPLE_SIZE_THRESHOLD = 20
 MINOR_CLASS_SAMPLE_SIZE_THRESHOLD = 10
 SHAP_MAX_DISPLAY = 10
+SCORING = (
+    "accuracy",
+    "balanced_accuracy",
+    "precision",
+    "recall",
+    "f1",
+    "roc_auc",
+    "matthews_corrcoef",
+)
 
 COUNT_FEATURES = [
     "rast",
@@ -142,7 +151,6 @@ def make_classifier(random_state: int, categorical_feature_names: list[str] | No
     ------
     Classifier object.
     """
-    # TODO: Might have to set ncpus
     clf = CatBoostClassifier(
         iterations=1000,
         depth=8,
@@ -155,6 +163,7 @@ def make_classifier(random_state: int, categorical_feature_names: list[str] | No
         cat_features=categorical_feature_names,
         verbose=False,
         allow_writing_files=False,
+        thread_count=1,
     )
     return clf
 
@@ -194,7 +203,9 @@ def get_scores(
     return pd.DataFrame(scores, index=[index])
 
 
-def perform_cv(phenotype_predictor: PhenotypePredictor, n_splits: int):
+def perform_cv(
+    phenotype_predictor: PhenotypePredictor, n_splits: int, scoring: tuple
+) -> tuple[pd.DataFrame | None, list | None, dict | None]:
     """
     Performs cross validation.
 
@@ -204,17 +215,22 @@ def perform_cv(phenotype_predictor: PhenotypePredictor, n_splits: int):
         PhenotypePredictor object.
     n_splits : int
         Number of splits.
+    scoring : tuple[str]
+        The scoring metrics to use during cross validation
     """
     sampling_type = phenotype_predictor._sampling_params["sampling_type"]
     if sampling_type == "oversample":
-        return None, None
-    cv_scores, estimators = phenotype_predictor.cross_validate_kfold(n_splits=n_splits)
-    return cv_scores, estimators
+        return None, None, None
+    cv_scores, estimators, indices = phenotype_predictor.cross_validate_kfold(
+        n_splits=n_splits, n_jobs=1, scoring=scoring
+    )
+    return cv_scores, estimators, indices
 
 
 def plot_shap_summary(
-    predictor: PhenotypePredictor,
+    clf,
     feature_data: pd.DataFrame,
+    title: str,
     output_file: str,
 ) -> pd.Series:
     """
@@ -222,14 +238,15 @@ def plot_shap_summary(
 
     Parameters
     ----------
-    predictor : PhenotypePredictor
-        PhenotypePredictor object.
+    clf
+        Classifier object
     feature_data : pd.DataFrame
         Feature data.
+    title : str
+        The title of the plot (phenotype name)
     output_file : str
         Output file path.
     """
-    clf = predictor.classifier
     feature_labels = list(feature_data.columns)
     explainer = shap.Explainer(clf)
     shap_values = explainer(feature_data)
@@ -241,7 +258,7 @@ def plot_shap_summary(
         ascending=False
     )
     shap.summary_plot(shap_values, max_display=SHAP_MAX_DISPLAY, show=False)
-    plt.title(f"{predictor.phenotype.name}")
+    plt.title(title)
     shap_summary_plot = plt.gcf()
     shap_summary_plot.savefig(output_file)
     plt.clf()
@@ -250,44 +267,80 @@ def plot_shap_summary(
 
 def save_data(
     phenotype_fd: pd.DataFrame,
-    data: dict,
+    phenotype_pd: pd.Series,
     phenotype_predictor: PhenotypePredictor,
-    output_folder: pathlib.Path,
+    data: dict,
     low_var_features: list[str],
     correlated_features_dict: dict,
     low_score_features: list[str],
     scores: pd.DataFrame,
-    cv_scores: pd.DataFrame | None,
+    cv_score_df: pd.DataFrame | None,
+    cv_estimators: list | None,
+    cv_indices: dict | None,
+    output_folder: pathlib.Path,
     save_all: bool,
 ):
-    # Step1: Save the feature and training data
-    with open(output_folder / "low_var_features.txt", "w") as fid:
+    # Step1: Save the pre-processing and feature data
+    with open(output_folder / "low_var_features_list.txt", "w") as fid:
         fid.write("\n".join(low_var_features))
-    with gzip.open(output_folder / "corr_features.json.gz", "wt") as gzfile:
+    with gzip.open(output_folder / "corr_features_map.json.gz", "wt") as gzfile:
         json.dump(correlated_features_dict, gzfile)
-    with open(output_folder / "low_score_features.txt", "w") as fid:
+    with open(output_folder / "low_score_features_list.txt", "w") as fid:
         fid.write("\n".join(low_score_features))
-    with open(output_folder / "features.txt", "w") as fid:
+    with open(output_folder / "features_list.txt", "w") as fid:
         fid.write("\n".join(phenotype_fd.columns))
     for key in ["y_train", "y_test"]:
         data[key].to_csv(output_folder / f"{key}.tsv", index=True, sep="\t")
 
-    # Step 2: Save the scores and model
+    # Step 2a: Save the scores
     scores_file = output_folder / "scores.csv"
     scores.to_csv(scores_file, index=True, sep=",")
-    if cv_scores is not None:
+    # Step2b: Save CV results
+    phenotype_index = phenotype_pd.index
+    if cv_score_df is not None and cv_indices is not None:
+        cv_score_df["name"] = phenotype_predictor.phenotype.name
+        cv_score_df["category"] = phenotype_predictor.phenotype.category
         cv_scores_file = output_folder / "cv_scores.csv"
-        cv_scores.to_csv(cv_scores_file, index=False, sep=",")
+        cv_score_df.to_csv(cv_scores_file, index=True, sep=",")
+        train_genomes = pd.DataFrame([phenotype_index[i] for i in cv_indices["train"]])
+        train_genomes.to_csv(
+            output_folder / "cv_train_genomes.csv", index=True, sep=","
+        )
+        val_genomes = pd.DataFrame([phenotype_index[i] for i in cv_indices["test"]])
+        val_genomes.to_csv(output_folder / "cv_val_genomes.csv", index=True, sep=",")
+    # Step 2c: Save model and phenotype data
     if save_all:
         phenotype_predictor.classifier.save_model(output_folder / "model.cbm")
         phenotype_predictor.save(output_folder)
+        if cv_estimators is not None:
+            for i, model in enumerate(cv_estimators):
+                model.save_model(output_folder / f"cv_model_{i}.cbm")
 
-    # Step 3: Save SHAP summary plot and top features
+    # Step 3a: Save SHAP summary plot and top features
     shap_summary_plot_file = str(output_folder / "shap_summary_plot.png")
     importance_df = plot_shap_summary(
-        phenotype_predictor, phenotype_fd, shap_summary_plot_file
+        phenotype_predictor.classifier,
+        data["X_train"],
+        title=phenotype_predictor.phenotype.name,
+        output_file=shap_summary_plot_file,
     )
     importance_df.to_csv(output_folder / "shap_features.csv", index=True, sep=",")
+    # Step 3b: Save SHAP summary plot and top features for CV
+    if cv_indices is not None and cv_estimators is not None:
+        for i, model in enumerate(cv_estimators):
+            genomes = phenotype_index[cv_indices["train"][i]]
+            shap_summary_plot_file = str(
+                output_folder / f"cv_shap_summary_plot_{i}.png"
+            )
+            importance_df = plot_shap_summary(
+                model,
+                phenotype_fd.loc[genomes, :],
+                title=phenotype_predictor.phenotype.name,
+                output_file=shap_summary_plot_file,
+            )
+            importance_df.to_csv(
+                output_folder / f"cv_shap_features_{i}.csv", index=True, sep=","
+            )
 
 
 def train_model(params: dict) -> None:
@@ -350,40 +403,51 @@ def train_model(params: dict) -> None:
     phenotype_predictor = PhenotypePredictor(phenotype, clf, random_state=random_state)
     # TODO: Enable imbalanced sampling again
     data = phenotype_predictor.split_data(
-        test_size=TEST_SIZE, stratify=True, imbalanced=None
+        test_size=TEST_SIZE, stratify=True, imbalanced=IMBALANCED
     )
     phenotype_predictor.fit()
     y_pred = phenotype_predictor.predict()
     y_true = data["y_test"]
     scores = get_scores(y_true, y_pred, phenotype)  # type: ignore
+
     # Cross validation
     if cross_validate:
-        cv_scores, _ = perform_cv(phenotype_predictor, n_splits=5)
+        clf_cv = make_classifier(random_state, categorical_feature_names)
+        phenotype_predictor_cv = PhenotypePredictor(
+            phenotype, clf_cv, random_state=random_state
+        )
+        data_cv = phenotype_predictor_cv.split_data(
+            test_size=0.0, stratify=True, imbalanced=IMBALANCED
+        )
+        cv_score_df, cv_estimators, cv_indices = perform_cv(
+            phenotype_predictor_cv, n_splits=5, scoring=SCORING
+        )
     else:
-        cv_scores = None
+        cv_score_df, cv_estimators, cv_indices = None, None, None
+
+    # TODO: Validation
+    # scores = get_scores(y_true, y_pred, phenotype)  # type: ignore
 
     # Step 5: File writing
     save_all = params["save_all"]
     save_data(
         phenotype_fd,
-        data,
+        phenotype_pd,
         phenotype_predictor,
-        output_folder,
+        data,
         low_var_features,
         correlated_features_dict,
         low_score_features,
         scores,
-        cv_scores,
+        cv_score_df,
+        cv_estimators,
+        cv_indices,
+        output_folder,
         save_all,
     )
 
     # Unset the feature data to reduce memory usage
     phenotype.unset_feature_data()
-    # Garbage collection
-    del low_var_features
-    del correlated_features_dict
-    del low_score_features
-    gc.collect()
 
 
 def main(
@@ -503,6 +567,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Overwrite existing results",
     )
+    # TODO: Add argument to enable/disable imbalanced sampling
     args = parser.parse_args()
     phenotype_file = pathlib.Path(args.phenotype_file)
     feature_file = pathlib.Path(args.feature_file)
