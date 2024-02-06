@@ -50,7 +50,7 @@ def main(
             outputs_sub_dir = outputs_folder / feature_name
             outputs_sub_dir.mkdir(parents=True, exist_ok=True)
             print(
-                f"i={ind_i+1};j={ind_j+1}/{len(FEATURES)}. Predicting traits for {phenotype_name} using {feature_name}"
+                f"(i={ind_i+1};j={ind_j+1}/{len(FEATURES)}). Predicting traits for {phenotype_name} using {feature_name}"
             )
             cmd = [
                 "python",
@@ -75,18 +75,19 @@ def main(
                 # "--save_all",
             ]
             if cross_validate:
-                cmd += "--cross_validate"
+                cmd += ["--cross_validate"]
             print(f"Output folder: {outputs_sub_dir}")
             print(
                 f"Score func: {score_func}, Reduction func: {reduction_func}, # of features: {n_features}"
             )
-            print(f"Random state: {random_state}, Number of CPUs: {n_cpus}")
+            print(
+                f"Random state: {random_state}, Cross validation: {cross_validate}, Number of CPUs: {n_cpus}"
+            )
             subprocess.run(cmd)
             print("\n")
 
 
 if __name__ == "__main__":
-    # args = outputs_folder, score_func, reduction_func,  n_features, random_state, n_cpus
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "outputs_folder", type=str, help="The folder to save the outputs"
@@ -121,7 +122,6 @@ if __name__ == "__main__":
         default=-1,
         help="Number of processes to use",
     )
-    # TODO: Add cross_validation parameter
     args = parser.parse_args()
     outputs_folder = pathlib.Path(args.outputs_folder)
     score_func = args.score_func
