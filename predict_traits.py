@@ -377,6 +377,10 @@ def train_model(params: dict) -> None:
     n_features = params["n_features"]
     random_state = params["random_state"]
     phenotype.set_feature_data(features, feature_type=feature_type)
+    if features.shape[1] <= 30_000:
+        corr_method = "numpy"
+    else:
+        corr_method = "numba"
     (
         low_var_features,
         correlated_features_dict,
@@ -386,6 +390,7 @@ def train_model(params: dict) -> None:
         correlation_treshold=CORRELATION_THRESHOLD,
         score_func=score_func,
         n_features=n_features,
+        method=corr_method,
     )
     # Check data
     phenotype_pd = phenotype.phenotype_data
@@ -477,8 +482,12 @@ def main(
     features, low_var_features = remove_features_with_low_variance(
         features, threshold=VARIANCE_THRESHOLD
     )
+    if features.shape[1] <= 30_000:
+        corr_method = "numpy"
+    else:
+        corr_method = "numba_parallel"
     features, correlated_features_dict = remove_features_with_high_correlation(
-        features, threshold=CORRELATION_THRESHOLD
+        features, threshold=CORRELATION_THRESHOLD, method=corr_method
     )
     if reduction_func is not None:
         features, components_df = feature_dimensionality_reduction(
