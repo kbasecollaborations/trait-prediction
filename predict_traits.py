@@ -482,7 +482,7 @@ def main(
     features, low_var_features = remove_features_with_low_variance(
         features, threshold=VARIANCE_THRESHOLD
     )
-    if features.shape[1] <= 30_000:
+    if features.shape[1] <= 40_000:
         corr_method = "numpy"
     else:
         corr_method = "numba_parallel"
