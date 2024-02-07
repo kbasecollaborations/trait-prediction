@@ -152,6 +152,7 @@ class Phenotype:
         correlation_treshold: float | None = 0.95,
         score_func: str | None = None,
         n_features: int = 1000,
+        method: str = "numpy",
     ) -> tuple[list[str], dict[str, list[str]], list[str]]:
         """
         Filters the feature data for this phenotype.
@@ -171,6 +172,10 @@ class Phenotype:
         n_features : int, optional
             Number of features to select.
             Default value is 1000.
+        method : str, optional
+            Method used to calculate correlated features
+            Options available are 'numpy', 'numba_parallel' and 'numba'
+            Default value is 'numpy'
 
         Returns
         -------
@@ -195,7 +200,7 @@ class Phenotype:
                     fd_high_var_low_corr,
                     corr_group_dict,
                 ) = remove_features_with_high_correlation(
-                    fd_high_var, correlation_treshold
+                    fd_high_var, correlation_treshold, method=method
                 )
             else:
                 fd_high_var_low_corr = fd_high_var
