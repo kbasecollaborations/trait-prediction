@@ -153,9 +153,9 @@ def make_classifier(random_state: int, categorical_feature_names: list[str] | No
     Classifier object.
     """
     clf = CatBoostClassifier(
-        iterations=1000,
-        depth=8,
-        learning_rate=0.03,
+        # iterations=1000,
+        # depth=8,
+        # learning_rate=0.03,
         # l2_leaf_reg=3,
         # bootstrap_type="Bayesian",
         # bagging_temperature=1,
