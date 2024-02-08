@@ -82,7 +82,7 @@ def main(
                 cmd += ["--cross_validate"]
             print(f"Output folder: {outputs_sub_dir}")
             print(
-                f"Score func: {score_func}, Reduction func: {reduction_func}, # of features: {n_features}"
+                f"Score func: {score_func}, Reduction func: {reduction_func}, Limit: {limit}, # of features: {n_features}"
             )
             print(
                 f"Random state: {random_state}, Cross validation: {cross_validate}, Number of CPUs: {n_cpus}"

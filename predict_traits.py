@@ -34,9 +34,9 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 # NOTE: For binary feature, v = p(1-p), keep between (0.01-0.05)
 VARIANCE_THRESHOLD = 0.01  # if v=0.01, p=0.01 or 0.99
-CORRELATION_THRESHOLD = 0.95
-IMBALANCED = None
-TEST_SIZE = 0.3  # NOTE: enabling cross-validation
+CORRELATION_THRESHOLD = None  # NOTE: Disabling correlation filtering for now
+IMBALANCED = None  # NOTE: Disabling imbalanced sampling for now
+TEST_SIZE = 0.3
 N_SPLITS = 5
 PHENOTYPE_SAMPLE_SIZE_THRESHOLD = 20
 MINOR_CLASS_SAMPLE_SIZE_THRESHOLD = 10
