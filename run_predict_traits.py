@@ -29,6 +29,7 @@ def main(
     outputs_folder: pathlib.Path,
     score_func: str,
     reduction_func: str,
+    limit: int | None,
     n_features: int,
     random_state: int,
     cross_validate: bool,
@@ -37,7 +38,7 @@ def main(
     for ind_i, phenotype_file in enumerate(phenotypes_folder.glob("*.tsv")):
         phenotype_name = phenotype_file.stem.removesuffix("_phenotypes")
         if phenotype_name not in DATASETS:
-            print(f"Skipping phenotype {phenotype_name}")
+            print(f"Skipping phenotype {phenotype_name}\n\n")
             continue
         for ind_j, feature in enumerate(FEATURES):
             feature_name = feature
@@ -75,6 +76,8 @@ def main(
                 str(n_cpus),
                 # "--save_all",
             ]
+            if limit is not None:
+                cmd += ["--limit", str(limit)]
             if cross_validate:
                 cmd += ["--cross_validate"]
             print(f"Output folder: {outputs_sub_dir}")
@@ -85,7 +88,7 @@ def main(
                 f"Random state: {random_state}, Cross validation: {cross_validate}, Number of CPUs: {n_cpus}"
             )
             subprocess.run(cmd)
-            print("\n")
+        print("\n")
 
 
 if __name__ == "__main__":
@@ -104,6 +107,9 @@ if __name__ == "__main__":
         type=str,
         default="None",
         help="Reduction function for feature dimensionality reduction",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Limit the number of phenotypes"
     )
     parser.add_argument(
         "--n_features",
@@ -127,6 +133,7 @@ if __name__ == "__main__":
     outputs_folder = pathlib.Path(args.outputs_folder)
     score_func = args.score_func
     reduction_func = args.reduction_func
+    limit = args.limit
     n_features = args.n_features
     random_state = args.random_state
     cross_validate = args.cross_validate
@@ -140,6 +147,7 @@ if __name__ == "__main__":
         outputs_folder,
         score_func,
         reduction_func,
+        limit,
         n_features,
         random_state,
         cross_validate,
