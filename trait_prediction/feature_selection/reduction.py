@@ -294,19 +294,19 @@ def feature_dimensionality_reduction(
     components_df : pd.DataFrame
         Pandas DataFrame containing the components of the dimensionality reduction.
     """
+    min_dim = min(feature_df.shape)
+    if n_components > min_dim:
+        warn(
+            f"n_components {n_components} is greater than the maximum dimension {min_dim} using {min_dim} instead"
+        )
+        n_comps = min_dim
+    else:
+        n_comps = n_components
     if method == "NMF":
-        max_dim = min(feature_df.shape)
-        if n_components > max_dim:
-            warn(
-                f"n_components {n_components} is greater than the maximum dimension {max_dim} using {max_dim} instead"
-            )
-            n_comps = max_dim
-        else:
-            n_comps = n_components
         model = NMF(n_components=n_comps, init="nndsvd", random_state=random_state)
         prefix = "NMF"
     elif method == "PCA":
-        model = PCA(n_components=n_components, random_state=random_state)
+        model = PCA(n_components=n_comps, random_state=random_state)
         prefix = "PCA"
     else:
         raise ValueError(
