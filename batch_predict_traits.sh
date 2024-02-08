@@ -26,6 +26,7 @@ python -W ignore run_predict_traits.py data/outputs/biolog_f_1000 \
     --random_state 42 \
     --n_cpus 16
 
+################################################################################
 # Reduction: NMF=200
 python -W ignore run_predict_traits.py data/outputs/biolog_nmf_200 \
     --reduction_func "NMF" \
@@ -41,6 +42,14 @@ python -W ignore run_predict_traits.py data/outputs/biolog_pca_200 \
     --random_state 42 \
     --n_cpus 16
 
+################################################################################
+# All features
+python -W ignore run_predict_traits.py data/outputs/biolog \
+    --cross_validate \
+    --random_state 42 \
+    --n_cpus 16
+
+################################################################################
 # Scoring: chi2=500
 python -W ignore run_predict_traits.py data/outputs/biolog_chi2_500 \
     --score_func "chi2" \
@@ -63,6 +72,7 @@ python -W ignore run_predict_traits.py data/outputs/biolog_f_500 \
     --random_state 42 \
     --n_cpus 16
 
+################################################################################
 # Reduction: NMF=100
 python -W ignore run_predict_traits.py data/outputs/biolog_nmf_100 \
     --reduction_func "NMF" \
@@ -74,12 +84,6 @@ python -W ignore run_predict_traits.py data/outputs/biolog_nmf_100 \
 python -W ignore run_predict_traits.py data/outputs/biolog_pca_100 \
     --reduction_func "PCA" \
     --n_features 100 \
-    --cross_validate \
-    --random_state 42 \
-    --n_cpus 16
-
-# All features
-python -W ignore run_predict_traits.py data/outputs/biolog \
     --cross_validate \
     --random_state 42 \
     --n_cpus 16
