@@ -45,7 +45,8 @@ def main(
             if not curr_feature_folder.is_dir():
                 continue
             feature_file = (
-                curr_feature_folder / f"{feature_name}_{phenotype_name}_features.tsv"
+                curr_feature_folder
+                / f"{feature_name}_{phenotype_name}_features_reduced.tsv"
             )
             outputs_sub_dir = outputs_folder / feature_name
             outputs_sub_dir.mkdir(parents=True, exist_ok=True)
@@ -132,7 +133,7 @@ if __name__ == "__main__":
     n_cpus = args.n_cpus if args.n_cpus > 0 else mp.cpu_count()
 
     phenotypes_folder = pathlib.Path("data/processed/biolog/phenotypes/")
-    features_folder = pathlib.Path("data/processed/biolog/features/")
+    features_folder = pathlib.Path("data/processed/biolog/features_reduced/")
     main(
         phenotypes_folder,
         features_folder,

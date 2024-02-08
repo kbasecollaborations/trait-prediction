@@ -24,8 +24,6 @@ from tqdm import tqdm
 
 from trait_prediction.feature_selection.reduction import (
     feature_dimensionality_reduction,
-    remove_features_with_high_correlation,
-    remove_features_with_low_variance,
 )
 from trait_prediction.main import Phenotype, PhenotypeSet
 from trait_prediction.training import PhenotypePredictor
@@ -68,6 +66,8 @@ COUNT_FEATURES = [
 ]
 FLOAT_FEATURES = [
     "kofam_modules",
+    "NMF",
+    "PCA",
 ]
 
 
@@ -102,6 +102,7 @@ def read_feature_data(
             dtype = "uint32"
     elif feature_type in FLOAT_FEATURES:
         dtype = "float64"
+        bool_conversion = False
     else:
         raise ValueError(f"Invalid feature type: {feature_type}")
     features = read_generic_features(
@@ -381,12 +382,16 @@ def train_model(params: dict) -> None:
         corr_method = "numpy"
     else:
         corr_method = "numba"
+    if feature_type in FLOAT_FEATURES:
+        var_thres = 0.0
+    else:
+        var_thres = VARIANCE_THRESHOLD
     (
         low_var_features,
         correlated_features_dict,
         low_score_features,
     ) = phenotype.filter_feature_data(
-        variance_threshold=VARIANCE_THRESHOLD,
+        variance_threshold=var_thres,
         correlation_treshold=CORRELATION_THRESHOLD,
         score_func=score_func,
         n_features=n_features,
@@ -479,32 +484,20 @@ def main(
     else:
         phenotypeset = PhenotypeSet.read_data(phenotype_file)
     features = read_feature_data(feature_file, feature_type)
-    features, low_var_features = remove_features_with_low_variance(
-        features, threshold=VARIANCE_THRESHOLD
-    )
-    if features.shape[1] <= 40_000:
-        corr_method = "numpy"
-    else:
-        corr_method = "numba_parallel"
-    features, correlated_features_dict = remove_features_with_high_correlation(
-        features, threshold=CORRELATION_THRESHOLD, method=corr_method
-    )
     if reduction_func is not None:
-        features, components_df = feature_dimensionality_reduction(
-            features,
-            method=reduction_func,
-            n_components=n_features,
-            random_state=random_state,
-        )
-    else:
-        components_df = None
-    features.to_csv(results_folder / "features.tsv", sep="\t", index=True)
-    if components_df is not None:
-        components_df.to_csv(results_folder / "components.tsv", index=True, sep="\t")
-    with open(results_folder / "low_var_features.txt", "w") as fid:
-        fid.write("\n".join(low_var_features))
-    with gzip.open(results_folder / "corr_features.json.gz", "wt") as gzfile:
-        json.dump(correlated_features_dict, gzfile)
+        features_reduc_file = results_folder / f"features_{reduction_func}.tsv"
+        components_file = results_folder / "components.tsv"
+        if features_reduc_file.is_file() and components_file.is_file():
+            features = read_feature_data(features_reduc_file, reduction_func)
+        else:
+            features, components_df = feature_dimensionality_reduction(
+                features,
+                method=reduction_func,
+                n_components=n_features,
+                random_state=random_state,
+            )
+            features.to_csv(features_reduc_file, sep="\t", index=True)
+            components_df.to_csv(components_file, index=True, sep="\t")
     mp_args = []
     for phenotype in phenotypeset:
         mp_arg = {
