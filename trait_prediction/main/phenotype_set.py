@@ -39,6 +39,9 @@ class PhenotypeSet(Sequence[Phenotype]):
             for phenotype in phenotypes
         }
 
+    def __repr__(self) -> str:
+        return f"PhenotypeSet (n={len(self._phenotype_dict)})"
+
     def __getitem__(self, index: PhenotypeIndex) -> Phenotype:
         return self._phenotype_dict[index]
 
