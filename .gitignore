@@ -172,3 +172,8 @@ cython_debug/
 data/
 *.pkl
 catboost_info/
+
+# Devenv
+.devenv*
+devenv.local.nix
+.direnv/
