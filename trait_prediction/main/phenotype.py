@@ -20,27 +20,27 @@ class Phenotype:
     """
     Class that represents a phenotype.
 
-        Parameters
-        ---------
-        raw_phenotype_data : pd.Series
-            Pandas Series containing the raw phenotype data.
-        name : str
-            Name of the phenotype.
-        category : str
-            Category of the phenotype.
+    Parameters
+    ---------
+    raw_phenotype_data : pd.Series
+        Pandas Series containing the raw phenotype data.
+    name : str
+        Name of the phenotype.
+    category : str
+        Category of the phenotype.
 
-        Attributes
-        ---------
-        phenotype_data : pd.Series
-            Pandas Series containing the filtered phenotype data.
-        name : str
-            Name of the phenotype.
-        category : str
-            Category of the phenotype.
-        feature_data : pd.DataFrame
-            Pandas DataFrame containing the feature data.
-        feature_type : str | None
-            Type of the feature data.
+    Attributes
+    ---------
+    phenotype_data : pd.Series
+        Pandas Series containing the filtered phenotype data.
+    name : str
+        Name of the phenotype.
+    category : str
+        Category of the phenotype.
+    feature_data : pd.DataFrame
+        Pandas DataFrame containing the feature data.
+    feature_type : str | None
+        Type of the feature data.
     """
 
     def __init__(self, raw_phenotype_data: pd.Series, name: str, category: str) -> None:

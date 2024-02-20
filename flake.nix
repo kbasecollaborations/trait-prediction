@@ -64,7 +64,6 @@
                 black.enable = true;
                 nixfmt.enable = true;
                 yamllint.enable = true;
-                pyright.enable = true;
                 editorconfig-checker.enable = true;
               };
 

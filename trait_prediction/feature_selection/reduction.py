@@ -163,6 +163,9 @@ def _find_corr_cols_numpy(corr_matrix: np.ndarray, threshold: float) -> list[lis
     return corr_cols
 
 
+# TODO: FIXME: The corr_dict and cols_to_drop are not accurate
+# We need to ignore the cols added to cols_to_drop while running the loop
+# Also we need to run the inner loop over all the columns in corr_matrix
 def remove_features_with_high_correlation(
     feature_df: pd.DataFrame, threshold: float = 0.95, method: str = "numpy"
 ) -> tuple[pd.DataFrame, dict[str, list[str]]]:
