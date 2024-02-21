@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import pathlib
 from calendar import c
 
@@ -149,7 +150,22 @@ def main(
 
 
 if __name__ == "__main__":
-    output_dir = pathlib.Path("data/outputs/")
+    parser = argparse.ArgumentParser(description="Aggregate ML results")
+    parser.add_argument(
+        "output_dir",
+        type=str,
+        required=True,
+        help="Path to the output directory",
+    )
+    parser.add_argument(
+        "dataset",
+        type=str,
+        required=True,
+        help="Name of the dataset",
+    )
+    args = parser.parse_args()
+    output_dir = pathlib.Path(args.output_dir)
+    datasets = [args.dataset]
     prediction_runs = [fol for fol in output_dir.iterdir() if fol.is_dir()]
     feature_list = [
         "cluster30",
@@ -163,8 +179,8 @@ if __name__ == "__main__":
         "rast",
         "uniprot_trembl",
         "uniref30",
+        "uniref50",
+        "uniref70",
         "uniref90",
     ]
-    # change this to include other datasets
-    datasets = ["ch_biolog"]
     main(prediction_runs, feature_list, datasets)
