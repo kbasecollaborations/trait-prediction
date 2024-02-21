@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 import gc
 import pathlib
 from typing import Optional
@@ -17,15 +18,12 @@ def read_features(feature_file: pathlib.Path, feature_name: str) -> pd.DataFrame
             dtypes[col] = "float64"
         else:
             dtypes[col] = "uint32"
-    feature_chunks = pd.read_csv(
-        feature_file, sep="\t", dtype=dtypes, iterator=True, chunksize=100
-    )
-    feature_df = pd.concat(feature_chunks, ignore_index=True)
+    feature_df = pd.read_csv(feature_file, sep="\t", dtype=dtypes)
     feature_df.set_index(header[0], inplace=True)
     feature_df.fillna(0, inplace=True)
-    feature_df.index = [r.rstrip(".RAST") for r in feature_df.index]  # type: ignore
+    feature_df.index = [r.strip().split("?")[-1].removesuffix(".RAST").removesuffix(".fna") for r in feature_df.index]  # type: ignore
     feature_df.index.name = "genomeID"  # type: ignore
-    return feature_df
+    return feature_df[~feature_df.index.duplicated(keep="first")]  # type: ignore
 
 
 def read_phenotypes(phenotype_file: pathlib.Path) -> pd.DataFrame:
@@ -50,6 +48,12 @@ def split_feature_data(
         print(f"Skipping {final_output_file} because it exists")
         return None
     phenotype_df = read_phenotypes(phenotype_file)
+    phenotype_df.index = pd.Index(
+        [
+            i.strip().removesuffix(".RAST").removesuffix(".fna")
+            for i in phenotype_df.index
+        ]
+    )
     rows = phenotype_df.index
     missing_rows = set(rows) - set(feature_df.index)
     if len(missing_rows) > 0:
@@ -57,7 +61,7 @@ def split_feature_data(
         missing_keys_file = output_sub_dir / f"{file_prefix}_missing_keys.txt"
         with open(missing_keys_file, "w") as fid:
             for missing_row in missing_rows:
-                fid.write(missing_row)
+                fid.write(str(missing_row))
                 fid.write("\n")
         selected_rows = list(set(rows).intersection(set(feature_df.index)))
     else:
@@ -98,8 +102,20 @@ def main(
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Prepare feature data for ML")
+    parser.add_argument(
+        "--feature_folder",
+        type=str,
+        help="Folder containing raw feature data",
+    )
+    args = parser.parse_args()
+    feature_folder = args.feature_folder
     phenotypes_folder = pathlib.Path("data/processed/biolog/phenotypes/")
-    raw_feature_folder = pathlib.Path("data/raw/biolog/features/")
+    raw_feature_folder = pathlib.Path(feature_folder)
+    if not phenotypes_folder.exists() or not phenotypes_folder.is_dir():
+        raise FileNotFoundError(f"Phenotype folder {phenotypes_folder} not found")
+    if not raw_feature_folder.exists() or not raw_feature_folder.is_dir():
+        raise FileNotFoundError(f"Feature folder {raw_feature_folder} not found")
     phenotype_files = {
         "ch": phenotypes_folder / "ch_phenotypes.tsv",
         "leaf": phenotypes_folder / "leaf_phenotypes.tsv",
@@ -110,6 +126,8 @@ if __name__ == "__main__":
         "kofam": raw_feature_folder / "kofam-annotations.tsv",
         "kofam_modules": raw_feature_folder / "kofam-modules.tsv",
         "uniref30": raw_feature_folder / "uniref30-annotations.tsv",
+        "uniref50": raw_feature_folder / "uniref50-annotations.tsv",
+        "uniref70": raw_feature_folder / "uniref70-annotations.tsv",
         "uniref90": raw_feature_folder / "uniref90-annotations.tsv",
         "uniprot_trembl": raw_feature_folder / "uniprot_trembl-annotations.tsv",
         "cluster30": raw_feature_folder / "cluster-level-30.0.counts.tsv",
