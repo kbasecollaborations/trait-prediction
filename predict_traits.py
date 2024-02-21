@@ -484,7 +484,6 @@ def main(
         phenotypeset = PhenotypeSet.limit(PhenotypeSet.read_data(phenotype_file), limit)
     else:
         phenotypeset = PhenotypeSet.read_data(phenotype_file)
-    # TODO: FIXME: Is the issue with inconsistent feature importances because I am removing correlated features?
     features = read_feature_data(feature_file, feature_type)
     if reduction_func is not None:
         features_reduc_file = results_folder / f"features_{reduction_func}.tsv"

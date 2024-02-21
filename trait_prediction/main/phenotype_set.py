@@ -115,7 +115,6 @@ class PhenotypeSet(Sequence[Phenotype]):
             phenotypes.append(Phenotype(phenotype_df[col], name, category))
         return PhenotypeSet(phenotypes)
 
-    # TODO: Add limit classmethod
     @classmethod
     def limit(cls, phenotype_set: "PhenotypeSet", limit: int) -> "PhenotypeSet":
         """
