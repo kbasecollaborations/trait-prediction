@@ -100,6 +100,13 @@ def _find_corr_cols_numba(matrix: np.ndarray, threshold=0.95) -> list[list[int]]
     corr_cols = [typed.List.empty_list(types.int64) for _ in range(n)]
     for i in range(n):
         to_drop = typed.List.empty_list(types.int64)
+        if i >= 1:
+            dropped_so_far_list = typed.List.empty_list(types.int64)
+            for corr_list in corr_cols:
+                for elem in corr_list:
+                    dropped_so_far_list.append(elem)
+            if i in set(dropped_so_far_list):
+                continue
         for j in range(i + 1, n):
             xi, xj = matrix[:, i], matrix[:, j]
             mean_i, mean_j = np.mean(xi), np.mean(xj)
@@ -156,6 +163,13 @@ def _find_corr_cols_numpy(corr_matrix: np.ndarray, threshold: float) -> list[lis
     corr_cols = [typed.List.empty_list(types.int64) for _ in range(n_cols)]
     for i in range(n_cols):
         to_drop = typed.List.empty_list(types.int64)
+        if i >= 1:
+            dropped_so_far_list = typed.List.empty_list(types.int64)
+            for corr_list in corr_cols:
+                for elem in corr_list:
+                    dropped_so_far_list.append(elem)
+            if i in set(dropped_so_far_list):
+                continue
         for j in range(i + 1, n_cols):
             if corr_matrix[i, j] >= threshold:
                 to_drop.append(j)
