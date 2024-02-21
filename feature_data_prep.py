@@ -6,22 +6,33 @@ import pathlib
 from typing import Optional
 
 import pandas as pd
+import polars as pl
 
 
 def read_features(feature_file: pathlib.Path, feature_name: str) -> pd.DataFrame:
     with open(feature_file, "r") as fid:
         header = fid.readline().strip().split("\t")
     dtypes = dict()
-    dtypes[header[0]] = "str"
+    id_col = header[0]
+    dtypes[header[0]] = pl.String
+    if feature_name == "kofam_modules":
+        final_dtype = "float64"
+    else:
+        final_dtype = "uint32"
     for col in header[1:]:
-        if feature_name == "kofam_modules":
-            dtypes[col] = "float64"
-        else:
-            dtypes[col] = "uint32"
-    feature_df = pd.read_csv(feature_file, sep="\t", dtype=dtypes)
-    feature_df.set_index(header[0], inplace=True)
-    feature_df.fillna(0, inplace=True)
-    feature_df.index = [r.strip().split("?")[-1].removesuffix(".RAST").removesuffix(".fna") for r in feature_df.index]  # type: ignore
+        dtypes[col] = pl.Float64
+    feature_df = pl.read_csv(
+        feature_file,
+        has_header=True,
+        separator="\t",
+        columns=header,
+        dtypes=dtypes,
+        use_pyarrow=False,
+    ).to_pandas()
+    feature_df[id_col] = feature_df[id_col].apply(
+        lambda x: x.strip().split("?")[-1].removesuffix(".RAST").removesuffix(".fna")
+    )
+    feature_df = feature_df.set_index(header[0]).fillna(0).astype(final_dtype)
     feature_df.index.name = "genomeID"  # type: ignore
     return feature_df[~feature_df.index.duplicated(keep="first")]  # type: ignore
 
@@ -129,7 +140,7 @@ if __name__ == "__main__":
         "uniref50": raw_feature_folder / "uniref50-annotations.tsv",
         "uniref70": raw_feature_folder / "uniref70-annotations.tsv",
         "uniref90": raw_feature_folder / "uniref90-annotations.tsv",
-        "uniprot_trembl": raw_feature_folder / "uniprot_trembl-annotations.tsv",
+        "uniprot_trembl": raw_feature_folder / "uniprot-trembl-annotations.tsv",
         "cluster30": raw_feature_folder / "cluster-level-30.0.counts.tsv",
         "cluster50": raw_feature_folder / "cluster-level-50.0.counts.tsv",
         "cluster70": raw_feature_folder / "cluster-level-70.0.counts.tsv",
