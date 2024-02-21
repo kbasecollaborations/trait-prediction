@@ -5,21 +5,22 @@ import multiprocessing as mp
 import pathlib
 import subprocess
 
-# DATASETS = ["ch", "pmi", "leaf"]
-DATASETS = ["ch"]
+DATASETS = ["leaf", "pmi", "ch"]
 FEATURES = [
     "rast",
     "kofam",
-    "uniref30",
-    "cluster30",
-    "eggnog_kegg",
-    "uniprot_trembl",
-    "cluster70",
-    "uniref90",
     "kofam_modules",
-    "eggnog_seed",
+    "uniref30",
+    "uniref50",
+    "uniref70",
+    "uniref90",
+    "uniprot_trembl",
+    "cluster30",
     "cluster50",
+    "cluster70",
     "cluster90",
+    "eggnog_kegg",
+    "eggnog_seed",
 ]
 
 
@@ -27,6 +28,7 @@ def main(
     phenotypes_folder: pathlib.Path,
     features_folder: pathlib.Path,
     outputs_folder: pathlib.Path,
+    dataset: str,
     score_func: str,
     reduction_func: str,
     limit: int | None,
@@ -37,7 +39,7 @@ def main(
 ):
     for ind_i, phenotype_file in enumerate(phenotypes_folder.glob("*.tsv")):
         phenotype_name = phenotype_file.stem.removesuffix("_phenotypes")
-        if phenotype_name not in DATASETS:
+        if phenotype_name != dataset:
             print(f"Skipping phenotype {phenotype_name}\n\n")
             continue
         for ind_j, feature in enumerate(FEATURES):
@@ -96,6 +98,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "outputs_folder", type=str, help="The folder to save the outputs"
     )
+    parser.add_argument("dataset", type=str, help="The dataset to use")
     parser.add_argument(
         "--score_func",
         type=str,
@@ -131,6 +134,9 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     outputs_folder = pathlib.Path(args.outputs_folder)
+    dataset = args.dataset
+    if dataset not in DATASETS:
+        raise ValueError(f"Invalid dataset: {dataset}")
     score_func = args.score_func
     reduction_func = args.reduction_func
     limit = args.limit
@@ -145,6 +151,7 @@ if __name__ == "__main__":
         phenotypes_folder,
         features_folder,
         outputs_folder,
+        dataset,
         score_func,
         reduction_func,
         limit,
