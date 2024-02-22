@@ -171,14 +171,14 @@ if __name__ == "__main__":
         "cluster70",
         "cluster90",
         "eggnog_kegg",
-        "eggnog_seed",
+        # "eggnog_seed",
         "kofam",
         # "kofam_modules", # NOTE: Skipping this because it is float and also has only 140 features
-        "rast",
+        "rast",  # NOTE: This is reducing number of data points by 20
         # "uniprot_trembl", # NOTE: Skipping this because lots of genomes are missing
         "uniref30",
         "uniref50",
         "uniref70",
-        "uniref90",
+        # "uniref90", # NOTE: This has bad performance and fewer samples
     ]
     main(prediction_runs, feature_list, datasets, run_ids, feature_dir, output_dir)
