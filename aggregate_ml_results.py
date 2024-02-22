@@ -2,7 +2,6 @@
 
 import argparse
 import pathlib
-from calendar import c
 
 import pandas as pd
 
@@ -154,13 +153,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "output_dir",
         type=str,
-        required=True,
         help="Path to the output directory",
     )
     parser.add_argument(
         "dataset",
         type=str,
-        required=True,
         help="Name of the dataset",
     )
     args = parser.parse_args()
