@@ -65,6 +65,7 @@ COUNT_FEATURES = [
     "eggnog_kegg",
     "uniprot_trembl",
     "eggnog_seed",
+    "combined",
 ]
 FLOAT_FEATURES = [
     "kofam_modules",
@@ -375,11 +376,20 @@ def train_model(params: dict) -> None:
 
     # Step 2: Filtering the phenotype
     features = params["features"]
+    features_map = params["features_map"]
     feature_type = params["feature_type"]
     score_func = params["score_func"]
     reduction_func = params["reduction_func"]
     n_features = params["n_features"]
     random_state = params["random_state"]
+    if features_map is not None:
+        features = features_map[phenotype.name]
+        print(f"Using features combined features for {phenotype.name}")
+    if features is None and features_map is None:
+        raise ValueError("Both features and features_map cannot be None")
+    if features.shape[0] == 0 or features.shape[1] == 0:
+        print(f"No features found for {phenotype.name}")
+        return None
     phenotype.set_feature_data(features, feature_type=feature_type)
     if features.shape[1] <= 30_000:
         corr_method = "numpy"
@@ -469,7 +479,7 @@ def train_model(params: dict) -> None:
 
 def main(
     phenotype_file: pathlib.Path,
-    feature_file: pathlib.Path,
+    feature_file: pathlib.Path | list[pathlib.Path],
     feature_type: str,
     random_state: int,
     results_folder: pathlib.Path,
@@ -486,8 +496,18 @@ def main(
         phenotypeset = PhenotypeSet.limit(PhenotypeSet.read_data(phenotype_file), limit)
     else:
         phenotypeset = PhenotypeSet.read_data(phenotype_file)
-    features = read_feature_data(feature_file, feature_type)
-    if reduction_func is not None:
+    if isinstance(feature_file, list):
+        features_map = {
+            f.stem.removesuffix("_features_combined"): read_feature_data(
+                f, feature_type
+            )
+            for f in feature_file
+        }
+        features = None
+    else:
+        features = read_feature_data(feature_file, feature_type)
+        features_map = None
+    if reduction_func is not None and features is not None:
         features_reduc_file = results_folder / f"features_{reduction_func}.tsv"
         components_file = results_folder / "components.tsv"
         if features_reduc_file.is_file() and components_file.is_file():
@@ -514,6 +534,7 @@ def main(
             "overwrite": overwrite,
             "save_all": save_all,
             "features": features,
+            "features_map": features_map,
             "phenotype": phenotype,
         }
         mp_args.append(mp_arg)
@@ -597,6 +618,27 @@ if __name__ == "__main__":
         main(
             phenotype_file,
             feature_file,
+            feature_type,
+            random_state,
+            results_folder,
+            limit,
+            score_func,
+            reduction_func,
+            n_features,
+            cross_validate,
+            n_cpus,
+            save_all,
+            overwrite,
+        )
+    elif (
+        phenotype_file.is_file()
+        and feature_file.is_dir()
+        and feature_type == "combined"
+    ):
+        feature_file_list = list(feature_file.glob("*.tsv"))
+        main(
+            phenotype_file,
+            feature_file_list,
             feature_type,
             random_state,
             results_folder,
