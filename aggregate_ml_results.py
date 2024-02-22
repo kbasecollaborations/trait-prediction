@@ -179,5 +179,6 @@ if __name__ == "__main__":
         "uniref50",
         "uniref70",
         "uniref90",
+        "combined",
     ]
     main(prediction_runs, feature_list, datasets)

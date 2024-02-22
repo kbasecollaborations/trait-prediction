@@ -3,7 +3,7 @@
 python -W ignore predict_traits.py \
 	data/processed/biolog/phenotypes/leaf_phenotypes.tsv \
 	data/processed/biolog/features_combined/leaf/ \
-	data/outputs_combined/ \
+	data/outputs_combined/biolog_mutual_info_1000/combined/ \
 	--feature_type "combined" \
 	--score_func "None" \
 	--reduction_func "None" \
