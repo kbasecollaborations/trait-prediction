@@ -30,6 +30,7 @@
                 stdenv.cc.cc.lib # required by Jupyter
                 zlib
                 glibc
+                python311Packages.tkinter
                 # (python311.withPackages python-packages)
               ];
 
