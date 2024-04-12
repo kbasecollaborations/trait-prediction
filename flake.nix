@@ -31,26 +31,22 @@
         inherit inputs pkgs;
         modules = [
           {
-            # https://devenv.sh/reference/options/
             packages = with pkgs; [
               stdenv.cc.cc.lib # required by Jupyter
               zlib
               glibc
+              python311Packages.pip
+              ruff
+              nodePackages.pyright
+              just
               python311Packages.tkinter
               # (python311.withPackages python-packages)
             ];
 
-            # https://devenv.sh/basics/
-            env = {GREET = "🛠️ Let's hack 💻";};
+            env = {GREET = "󱄅 Nix";};
 
-            # https://devenv.sh/scripts/
             scripts.hello.exec = "echo $GREET";
 
-            enterShell = ''
-              hello
-            '';
-
-            # https://devenv.sh/languages/
             languages.python = {
               package = pkgs.python311;
               enable = true;
@@ -63,22 +59,25 @@
               };
             };
 
-            # Make diffs fantastic
-            difftastic.enable = true;
-
-            # https://devenv.sh/pre-commit-hooks/
             pre-commit.hooks = {
-              black.enable = true;
-              alejandra.enable = true;
+              ruff.enable = true;
+              shellcheck.enable = true;
               yamllint.enable = true;
+              markdownlint.enable = true;
+              alejandra.enable = true;
               editorconfig-checker.enable = true;
             };
 
             # Plugin configuration
             pre-commit.hooks.yamllint.settings.preset = "relaxed";
 
-            # https://devenv.sh/integrations/dotenv/
             dotenv.enable = true;
+
+            env.LD_LIBRARY_PATH = with pkgs;
+              lib.makeLibraryPath [
+                stdenv.cc.cc.lib
+                zlib
+              ];
           }
         ];
       };
