@@ -231,7 +231,6 @@ def perform_cv(
     return cv_scores, estimators, indices
 
 
-# TODO: Use "https://arxiv.org/abs/1509.06321" for feature selection
 def plot_shap_summary(
     clf,
     feature_data: pd.DataFrame,
@@ -443,7 +442,7 @@ def train_model(params: dict) -> None:
         phenotype_predictor_cv = PhenotypePredictor(
             phenotype, clf_cv, random_state=random_state
         )
-        data_cv = phenotype_predictor_cv.split_data(
+        _ = phenotype_predictor_cv.split_data(
             test_size=0.0, stratify=True, imbalanced=IMBALANCED
         )
         cv_score_df, cv_estimators, cv_indices = perform_cv(
