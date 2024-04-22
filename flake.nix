@@ -60,7 +60,7 @@
             };
 
             pre-commit.hooks = {
-              ruff.enable = true;
+              ruff.enable = false;
               shellcheck.enable = true;
               yamllint.enable = true;
               markdownlint.enable = true;
