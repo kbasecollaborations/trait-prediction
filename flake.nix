@@ -40,7 +40,6 @@
               nodePackages.pyright
               just
               python311Packages.tkinter
-              # (python311.withPackages python-packages)
             ];
 
             env = {GREET = "󱄅 Nix";};
@@ -60,7 +59,6 @@
             };
 
             pre-commit.hooks = {
-              ruff.enable = false;
               shellcheck.enable = true;
               yamllint.enable = true;
               markdownlint.enable = true;
