@@ -40,7 +40,6 @@
               nodePackages.pyright
               just
               python311Packages.tkinter
-              # (python311.withPackages python-packages)
             ];
 
             env = {GREET = "󱄅 Nix";};
@@ -60,16 +59,13 @@
             };
 
             pre-commit.hooks = {
-              ruff.enable = true;
               shellcheck.enable = true;
               yamllint.enable = true;
+              yamllint.settings.preset = "relaxed";
               markdownlint.enable = true;
               alejandra.enable = true;
               editorconfig-checker.enable = true;
             };
-
-            # Plugin configuration
-            pre-commit.hooks.yamllint.settings.preset = "relaxed";
 
             dotenv.enable = true;
 

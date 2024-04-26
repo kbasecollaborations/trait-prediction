@@ -1,0 +1,105 @@
+Dataset,Phenotype,0
+AT leaf,Acetate,"{'K01638.1', 'K01637.1', 'K01638', 'K19221', 'K19221.1'}"
+AT leaf,Alanine,{'K00459'}
+AT leaf,Arabinose,set()
+AT leaf,Arginine,{'342_298.1'}
+AT leaf,Asparagine,"{'K01744.1', '126_3045.1', 'K17686.1', '126_3045', 'K01744', 'K02010'}"
+AT leaf,Aspartate,{'1075_3332'}
+AT leaf,Beoate,"{'K05549', 'K05550', 'K05783.1'}"
+AT leaf,Cellobiose,"{'K00857.1', 'K00857'}"
+AT leaf,Coniferyl_alcohol,"{'K18383', 'UniRef50_A0A7C9PHG6', 'UniRef30_A0A7C9PHG6'}"
+AT leaf,Formate,set()
+AT leaf,Fructose,"{'K00882', 'K05799.1', 'K02768', 'K02769', 'K02770'}"
+AT leaf,Galactose,"{'K07407.1', 'K01631.1', 'K03534.1', '282_3107'}"
+AT leaf,Galacturonic_acid,"{'K07394', '892_2972.1', 'K13747.1', '892_2972'}"
+AT leaf,Glucose,set()
+AT leaf,Glucote,"{'K00851.1', 'K03299', 'K03299.1', 'K22934'}"
+AT leaf,Glutamate,set()
+AT leaf,Glutamine,"{'UniRef30_UPI001FEEB8E4', '126_3045.1'}"
+AT leaf,Histidine,"{'K07346', 'K01032', 'K09975', 'K01468', 'K09975.1', 'K01712', '1025_1128', '1025_1128.1'}"
+AT leaf,Isoleucine,set()
+AT leaf,Leucine,{'K23541'}
+AT leaf,Lysine,set()
+AT leaf,Maltose,"{'703_3510', 'K01187.1', 'K03534', 'K03534.1'}"
+AT leaf,Mannitol,"{'1175_884', 'K10229', 'K10227', '1345_167', 'K10227.1', 'K02027', 'K10228'}"
+AT leaf,Mannose,"{'K01443', 'K11942', 'K03829.1', 'K01443.1'}"
+AT leaf,Methanol_La3,"{'K16260.1', '183_2779.1', '183_2779', 'K09154'}"
+AT leaf,Ornithine,set()
+AT leaf,Oxalate,set()
+AT leaf,Phenylalanine,set()
+AT leaf,Proline,"{'K03719', 'K06954'}"
+AT leaf,Pyruvate,set()
+AT leaf,Serine,set()
+AT leaf,Succite,"{'K00372', 'K11103.1', 'K11103', 'K07157.1', 'K07157'}"
+AT leaf,Sucrose,"{'K01187.1', 'K05799.1'}"
+AT leaf,Threonine,set()
+AT leaf,Trehalose,"{'K01805', 'K01805.1'}"
+AT leaf,Tryptophan,"{'K05784', '982_1829.2'}"
+AT leaf,Tyrosine,set()
+AT leaf,Valine,set()
+AT leaf,Xylose,"{'K01805', 'K01805.1'}"
+AT leaf,myo_inositol,"{'K00010', 'K03337', 'K00010.1', 'K03337.1', 'K03335', 'K03338', 'K03335.1'}"
+Literature,Carbon-Acetic-Acid,set()
+Literature,Carbon-Acetoacetic-Acid,{'SSO:000017674'}
+Literature,Carbon-Citric-Acid,"{'K03762', 'SSO:000004712'}"
+Literature,Carbon-D-Arabitol,set()
+Literature,Carbon-D-Aspartic-Acid,set()
+Literature,Carbon-D-Cellobiose,set()
+Literature,Carbon-D-Fructose,set()
+Literature,Carbon-D-Fructose-6-Phosphate,set()
+Literature,Carbon-D-Fucose,set()
+Literature,Carbon-D-Galactonic-Acid-g-Lactone,set()
+Literature,Carbon-D-Galactose,"{'SSO:000000078', 'K19265.1'}"
+Literature,Carbon-D-Galacturonic-Acid,"{'SSO:000003125', 'K00978.1', 'K00978'}"
+Literature,Carbon-D-Gluconic-Acid,set()
+Literature,Carbon-D-Glucose,{'K01785'}
+Literature,Carbon-D-Glucose-6-Phosphate,set()
+Literature,Carbon-D-Glucuronic-Acid,set()
+Literature,Carbon-D-Malic-Acid,set()
+Literature,Carbon-D-Mannitol,set()
+Literature,Carbon-D-Mannose,set()
+Literature,Carbon-D-Melibiose,set()
+Literature,Carbon-D-Raffinose,set()
+Literature,Carbon-D-Saccharic-Acid,"{'K01706', 'K01706.1', '1382_3047'}"
+Literature,Carbon-D-Serine,{'640_3502'}
+Literature,Carbon-D-Sorbitol,set()
+Literature,Carbon-D-Trehalose,{'K17838.1'}
+Literature,Carbon-Dextrin,"{'K13075', '196_1360'}"
+Literature,Carbon-Formic-Acid,{'K07492'}
+Literature,Carbon-Gelatin,{'SSO:000026550'}
+Literature,Carbon-Gentiobiose,set()
+Literature,Carbon-Glycerol,set()
+Literature,Carbon-Glycyl-L-Proline,{'SSO:000008289'}
+Literature,Carbon-Inosine,"{'K06926', 'K06726', 'K06726.1'}"
+Literature,Carbon-L-Alanine,{'SSO:000012762'}
+Literature,Carbon-L-Arginine,"{'SSO:000026550', 'SSO:000011970'}"
+Literature,Carbon-L-Aspartic-Acid,set()
+Literature,Carbon-L-Fucose,"{'K16324', 'K00154'}"
+Literature,Carbon-L-Glutamic-Acid,set()
+Literature,Carbon-L-Histidine,"{'SSO:000012224', 'K01712', 'K01712.1', '1132_663', 'K00433'}"
+Literature,Carbon-L-Lactic-Acid,"{'K20628', 'K06867'}"
+Literature,Carbon-L-Malic-Acid,set()
+Literature,Carbon-L-Pyroglutamic-Acid,"{'K07749.1', 'K03292', 'SSO:000006983'}"
+Literature,Carbon-L-Rhamnose,"{'629_2659', '629_2659.1'}"
+Literature,Carbon-L-Serine,"{'K15727.1', 'K07452'}"
+Literature,Carbon-Maltose,set()
+Literature,Carbon-Mucic-Acid,set()
+Literature,Carbon-N-Acetyl-D-Galactosamine,set()
+Literature,Carbon-N-Acetyl-D-Glucosamine,"{'K01443', 'K01443.1', 'SSO:000005105'}"
+Literature,Carbon-N-Acetyl-Neuraminic-Acid,set()
+Literature,Carbon-N-Acetyl-b-D-Mannosamine,set()
+Literature,Carbon-Pectin,set()
+Literature,Carbon-Propionic-Acid,{'K14189'}
+Literature,Carbon-Quinic-Acid,set()
+Literature,Carbon-Salicin,set()
+Literature,Carbon-Stachyose,{'K05603'}
+Literature,Carbon-Sucrose,{'K00847'}
+Literature,Carbon-a-D-Lactose,{'382_538'}
+Literature,Carbon-a-Hydroxy-Butyric-Acid,"{'K04518', 'K07467'}"
+Literature,Carbon-a-Keto-Butyric-Acid,set()
+Literature,Carbon-a-Keto-Glutaric-Acid,"{'K16937', 'K03762.1'}"
+Literature,Carbon-b-Methyl-D-Glucoside,{'K07451'}
+Literature,Carbon-g-Amino-Butyric-Acid,set()
+Literature,Carbon-g-Hydroxy-Butyric-Acid,{'SSO:000000110'}
+Literature,Carbon-m-Inositol,"{'K03335.1', 'K00010'}"
+Literature,Carbon-p-Hydroxy-Phenylacetic-Acid,{'K02509'}
