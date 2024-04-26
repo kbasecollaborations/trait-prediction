@@ -77,6 +77,33 @@ class PhenotypeSet(Sequence[Phenotype]):
         """Iterable of Phenotype objects."""
         return self.__iter__()
 
+    @staticmethod
+    def _parse_phenotype_info(phenotype_str: str) -> tuple[str, str]:
+        """Parse the phenotype name and category from a string.
+
+        Parameters
+        ----------
+        phenotype_str : str
+            The string containing the phenotype name and category.
+
+        Returns
+        -------
+        tuple[str, str]
+            Phenotype name and category.
+        """
+        try:
+            name, category = phenotype_str.split("--")
+            if not category.strip():
+                category = "unknown"
+        except ValueError:
+            if phenotype_str.startswith("Unnamed"):
+                num = phenotype_str.rsplit(" ", 1)[-1]
+                name = f"unnamed_{num}"
+            else:
+                name = phenotype_str
+            category = "unknown"
+        return name.strip(), category.strip()
+
     @classmethod
     def read_data(cls, file_path: str | pathlib.Path) -> "PhenotypeSet":
         """
@@ -101,18 +128,8 @@ class PhenotypeSet(Sequence[Phenotype]):
         phenotype_df = raw_phenotype_df.select_dtypes(include="number")
         phenotypes = []
         for col in phenotype_df.columns:
-            try:
-                name, category = col.split("--")
-                if not category:
-                    category = "unknown"
-            except ValueError:
-                if col.startswith("Unnamed"):
-                    num = col.rsplit(" ", 1)[-1]
-                    name = f"unnamed_{num}"
-                else:
-                    name = col
-                category = "unknown"
-            phenotypes.append(Phenotype(phenotype_df[col], name, category))
+            name, category = cls._parse_phenotype_info(col)
+            phenotypes.append(Phenotype(phenotype_df.loc[:, col], name, category))
         return PhenotypeSet(phenotypes)
 
     @classmethod
