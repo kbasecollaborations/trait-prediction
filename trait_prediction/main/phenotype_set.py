@@ -133,6 +133,25 @@ class PhenotypeSet(Sequence[Phenotype]):
         return PhenotypeSet(phenotypes)
 
     @classmethod
+    def read_files(cls, file_paths: list[str | pathlib.Path]) -> "PhenotypeSet":
+        """Reads phenotype data from multiple TSV files and returns a PhenotypeSet object.
+
+        Parameters
+        ----------
+        file_paths : list[str | pathlib.Path]
+            List of paths to the TSV files containing the phenotype data.
+
+        Returns
+        -------
+        "PhenotypeSet"
+            PhenotypeSet object containing the phenotype data.
+        """
+        phenotypes = []
+        for file_path in file_paths:
+            phenotypes.extend(cls.read_data(file_path).phenotypes)
+        return cls(phenotypes)
+
+    @classmethod
     def limit(cls, phenotype_set: "PhenotypeSet", limit: int) -> "PhenotypeSet":
         """
         Create a new PhenotypeSet object with a limited number of phenotypes.
