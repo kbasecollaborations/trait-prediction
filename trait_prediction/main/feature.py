@@ -2,17 +2,24 @@
 
 import pathlib
 from typing import Callable
+from warnings import warn
 
-import numpy as np
 import pandas as pd
 import polars as pl
+from sklearn.decomposition import NMF, PCA
+from sklearn.feature_selection import (
+    SelectKBest,
+    VarianceThreshold,
+    chi2,
+    f_classif,
+    mutual_info_classif,
+)
 
-# TODO: Handle these functions within the class
-from ..feature_selection.reduction import (
-    feature_dimensionality_reduction,
-    feature_selection_kbest,
-    remove_features_with_high_correlation,
-    remove_features_with_low_variance,
+from .feature_selection import (
+    _find_corr_cols_numba,
+    _find_corr_cols_numba_parallel,
+    _find_corr_cols_numpy,
+    _pearson_correlation_coefficient,
 )
 
 
@@ -145,137 +152,200 @@ class Feature:
         """Pandas DataFrame containing the feature data."""
         return self._feature_data.copy(deep=True)
 
-    def filter_feature_data(
-        self,
-        variance_threshold: float | None = 0.05,
-        correlation_treshold: float | None = 0.95,
-        score_func: str | None = None,
-        n_features: int = 1000,
-        method: str = "numpy",
-    ) -> tuple[list[str], dict[str, list[str]], list[str]]:
+    @staticmethod
+    def remove_features_with_low_variance(
+        feature_df: pd.DataFrame, threshold: float = 0.05
+    ) -> tuple[pd.DataFrame, list[str]]:
         """
-        Filters the feature data for this phenotype.
+        Removes features with low variance from the given feature DataFrame.
 
         Parameters
         ---------
-        variance_threshold : float | None
+        feature_df : pd.DataFrame
+            Pandas DataFrame containing the features.
+        threshold : float
             Threshold for the variance of the features.
-            Default value 0.05
-        correlation_treshold : float | None
+            Default value is 0.05 which removes features with more than 95% of the values being the same.
+
+        Returns
+        ------
+        pd.DataFrame
+            Pandas DataFrame containing the features with low variance removed.
+        list[str]
+            List of the features with low variance that were removed
+        """
+        vt = VarianceThreshold(threshold=threshold)
+        vt.fit(feature_df)
+        mask = vt.get_support()
+        if mask is None:
+            raise ValueError("No features were selected")
+        removed_features = list(feature_df.columns[~mask])
+        return feature_df.loc[:, list(mask)], removed_features
+
+    @staticmethod
+    def remove_features_with_high_correlation(
+        feature_df: pd.DataFrame, threshold: float = 0.95, method: str = "numpy"
+    ) -> tuple[pd.DataFrame, dict[str, list[str]]]:
+        """
+        Removes features with high correlation from the given feature DataFrame.
+
+        Parameters
+        ---------
+        feature_df : pd.DataFrame
+            Pandas DataFrame containing the features.
+        threshold : float
             Threshold for the correlation of the features.
-            Default value 0.95
-        score_func : str, optional
-            Supported values are 'f_classif', 'mutual_info_classif', 'chi2'
-            Default  value is None
-            Function taking two arrays X and y, and returning a pair of arrays (scores, pvalues) or a single array with scores.
-        n_features : int, optional
-            Number of features to select.
-            Default value is 1000.
+            Default value is 0.95
         method : str, optional
             Method used to calculate correlated features
             Options available are 'numpy', 'numba_parallel' and 'numba'
             Default value is 'numpy'
 
         Returns
-        -------
-        list[str]
-            List of the features with low variance that were removed
+        ------
+        pd.DataFrame
+            Pandas DataFrame containing the features with high correlation removed.
         dict[str, list[str]]
             Dictionary of the features with high correlation that were removed
-        list[str]
-            List of the features with low score_func score that were removed
-
         """
-        if self._feature_data is not None:
-            if variance_threshold is not None:
-                fd_high_var, low_var_features = remove_features_with_low_variance(
-                    self._feature_data, variance_threshold
-                )
-            else:
-                fd_high_var = self._feature_data
-                low_var_features = []
-            if correlation_treshold is not None:
-                (
-                    fd_high_var_low_corr,
-                    corr_group_dict,
-                ) = remove_features_with_high_correlation(
-                    fd_high_var, correlation_treshold, method=method
-                )
-            else:
-                fd_high_var_low_corr = fd_high_var
-                corr_group_dict = {}
-            if score_func is not None:
-                fd_final, low_score_features = feature_selection_kbest(
-                    fd_high_var_low_corr, self.phenotype_data, score_func, n_features
-                )
-            else:
-                fd_final = fd_high_var_low_corr
-                low_score_features = []
-            self._feature_data = fd_final
+        # Get correlated columns
+        if method == "numba_parallel":
+            corr_cols = _find_corr_cols_numba_parallel(feature_df.to_numpy(), threshold)
+        elif method == "numba":
+            corr_cols = _find_corr_cols_numba(feature_df.to_numpy(), threshold)
+        elif method == "numpy":
+            corr_matrix = _pearson_correlation_coefficient(feature_df.to_numpy().T)
+            corr_cols = _find_corr_cols_numpy(corr_matrix, threshold)
         else:
-            raise ValueError("Feature data not set for this phenotype")
-        return low_var_features, corr_group_dict, low_score_features
-
-    def reduce_feature_data(
-        self,
-        method: str,
-        n_components: int,
-        random_state: int | None = None,
-    ) -> pd.DataFrame:
-        """
-        Reduces the dimensionality of the feature data for this phenotype.
-
-        Parameters
-        ----------
-        method : str
-            Method to use for dimensionality reduction.
-            Supported methods are 'PCA' and 'NMF'
-        n_components : int
-            Number of components to reduce to.
-        random_state : int | None, optional
-            Random seed value, by default None
-
-        Returns
-        -------
-        components_df : pd.DataFrame
-            Pandas DataFrame containing the components of the dimensionality reduction.
-
-        Raises
-        ------
-        ValueError
-            If feature data is not set for this phenotype
-        """
-        if self._feature_data is not None:
-            reduced_feature_df, components_df = feature_dimensionality_reduction(
-                self._feature_data, method, n_components, random_state=random_state
+            raise ValueError(
+                f"method {method} is not supported. Supported methods are numpy, numba_parallel, numba"
             )
-            self._feature_data = reduced_feature_df
-            return components_df
-        else:
-            raise ValueError("Feature data not set for this phenotype")
+        # Find columns to drop
+        cols_to_drop = set()
+        corr_group_dict = dict()
+        cols = feature_df.columns
+        for i, corr_col in enumerate(corr_cols):
+            if len(corr_col) < 1:
+                continue
+            cols_to_drop.update(corr_col)
+            corr_group_dict[cols[i]] = list(cols[corr_col])
+        # Drop the columns from the DataFrame
+        return (
+            feature_df.drop(list(feature_df.columns[list(cols_to_drop)]), axis=1),
+            corr_group_dict,
+        )
 
-    def select_important_features(
-        self, feature_importances: np.ndarray, k: int
-    ) -> pd.DataFrame:
+    @staticmethod
+    def feature_selection_kbest(
+        feature_df: pd.DataFrame,
+        target_s: pd.Series,
+        score_func: str,
+        n_features: int = 1000,
+    ) -> tuple[pd.DataFrame, list[str]]:
         """
-        Selects the k most important features for this phenotype using feature_importances
+        Select features according to the k highest score_func scores.
 
         Parameters
         ---------
-        feature_importances : np.ndarray
-            Numpy array containing the feature importances
-        k : int
-            Number of features to select
+        feature_df : pd.DataFrame
+            Pandas DataFrame containing the features.
+        target_s : pd.Series
+            Pandas Series containing the target.
+        score_func : str
+            Supported values are 'f_classif', 'mutual_info_classif', 'chi2'
+            Function taking two arrays X and y, and returning a pair of arrays (scores, pvalues) or a single array with scores.
+        n_features : int, optional
+            Number of features to select.
+            Default value is 1000.
 
         Returns
         ------
         pd.DataFrame
-            Pandas DataFrame containing the selected features
+            Pandas DataFrame containing the features with high score_func scores.
+        list[str]
+            List of removed features with low score_func score
         """
-        feature_data = self.feature_data
-        importance_df = pd.DataFrame(
-            {"feature": feature_data.columns, "importance": feature_importances}
-        ).sort_values(by="importance", ascending=False)
-        selected_features = importance_df["feature"].tolist()[:k]
-        self._feature_data = feature_data[selected_features]
-        return self._feature_data
+        if score_func == "f_classif":
+            score_function = f_classif
+        elif score_func == "mutual_info_classif":
+            score_function = mutual_info_classif
+        elif score_func == "chi2":
+            score_function = chi2
+        else:
+            raise ValueError(
+                f"score_func {score_func} is not supported. Supported functions are f_classif, mutual_info_classif, chi2"
+            )
+        kbest = SelectKBest(score_func=score_function, k=n_features)
+        kbest_features = kbest.fit_transform(feature_df, target_s)
+        kbest_feature_df = pd.DataFrame(
+            kbest_features,
+            columns=feature_df.columns[kbest.get_support()],
+            index=feature_df.index,
+        )
+        if kbest.get_support() is None:
+            raise ValueError("No features were selected")
+        removed_features = list(feature_df.columns[~kbest.get_support()])
+        return kbest_feature_df, removed_features
+
+    @staticmethod
+    def feature_dimensionality_reduction(
+        feature_df: pd.DataFrame,
+        method: str,
+        n_components: int,
+        random_state: int | None = None,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Perform dimensionality reduction on the given feature DataFrame.
+
+        Parameters
+        ---------
+        feature_df : pd.DataFrame
+            Pandas DataFrame containing the features.
+        method : str
+            Supported values are 'NMF', 'PCA'
+        n_components : int
+            Number of components to reduce to.
+        random_state : int | None
+            Seed for the random number generator.
+            Default value is None.
+
+        Returns
+        ------
+        reduced_feature_df : pd.DataFrame
+            Pandas DataFrame containing the features with reduced dimensionality.
+        components_df : pd.DataFrame
+            Pandas DataFrame containing the components of the dimensionality reduction.
+        """
+        min_dim = min(feature_df.shape)
+        if n_components > min_dim:
+            warn(
+                f"n_components {n_components} is greater than the maximum dimension {min_dim} using {min_dim} instead"
+            )
+            n_comps = min_dim
+        else:
+            n_comps = n_components
+        if method == "NMF":
+            model = NMF(n_components=n_comps, init="nndsvd", random_state=random_state)  # type: ignore
+            prefix = "NMF"
+        elif method == "PCA":
+            model = PCA(n_components=n_comps, random_state=random_state)
+            prefix = "PCA"
+        else:
+            raise ValueError(
+                f"method {method} is not supported. Supported methods are NMF, PCA"
+            )
+        reduced_features = model.fit_transform(feature_df)
+        reduced_feature_df = pd.DataFrame(
+            reduced_features,
+            columns=pd.Index(
+                [f"{prefix}_{i}" for i in range(reduced_features.shape[1])]
+            ),
+            index=feature_df.index,
+        )
+        components = model.components_
+        components_df = pd.DataFrame(
+            components,
+            columns=feature_df.columns,
+            index=pd.Index([f"{prefix}_{i}" for i in range(components.shape[0])]),
+        )
+        return reduced_feature_df, components_df
