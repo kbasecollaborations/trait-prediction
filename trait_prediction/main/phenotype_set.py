@@ -16,6 +16,25 @@ class PhenotypeIndex(NamedTuple):
     name: str
     category: str
 
+    @classmethod
+    def make_index(cls, name: str, category: str) -> "PhenotypeIndex":
+        """
+        Creates a PhenotypeIndex object.
+
+        Parameters
+        ---------
+        name : str
+            Name of the phenotype.
+        category : str
+            Category of the phenotype.
+
+        Returns
+        ------
+        PhenotypeIndex
+            PhenotypeIndex object.
+        """
+        return cls(name=name, category=category)
+
 
 class PhenotypeSet(Sequence[Phenotype]):
     """
@@ -52,25 +71,6 @@ class PhenotypeSet(Sequence[Phenotype]):
         yield from self._phenotype_dict.values()
 
     # NOTE: __contains__, __reversed__, index and count methods are mixins
-
-    @staticmethod
-    def make_index(name: str, category: str) -> PhenotypeIndex:
-        """
-        Creates a PhenotypeIndex object.
-
-        Parameters
-        ---------
-        name : str
-            Name of the phenotype.
-        category : str
-            Category of the phenotype.
-
-        Returns
-        ------
-        PhenotypeIndex
-            PhenotypeIndex object.
-        """
-        return PhenotypeIndex(name=name, category=category)
 
     @property
     def phenotypes(self) -> Iterable[Phenotype]:
