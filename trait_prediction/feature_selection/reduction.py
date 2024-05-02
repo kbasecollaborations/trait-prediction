@@ -39,6 +39,8 @@ def remove_features_with_low_variance(
     vt = VarianceThreshold(threshold=threshold)
     vt.fit(feature_df)
     mask = vt.get_support()
+    if mask is None:
+        raise ValueError("No features were selected")
     removed_features = list(feature_df.columns[~mask])
     return feature_df.loc[:, list(mask)], removed_features
 
@@ -225,7 +227,7 @@ def remove_features_with_high_correlation(
         corr_group_dict[cols[i]] = list(cols[corr_col])
     # Drop the columns from the DataFrame
     return (
-        feature_df.drop(feature_df.columns[list(cols_to_drop)], axis=1),
+        feature_df.drop(list(feature_df.columns[list(cols_to_drop)]), axis=1),
         corr_group_dict,
     )
 
@@ -276,6 +278,8 @@ def feature_selection_kbest(
         columns=feature_df.columns[kbest.get_support()],
         index=feature_df.index,
     )
+    if kbest.get_support() is None:
+        raise ValueError("No features were selected")
     removed_features = list(feature_df.columns[~kbest.get_support()])
     return kbest_feature_df, removed_features
 
@@ -317,7 +321,7 @@ def feature_dimensionality_reduction(
     else:
         n_comps = n_components
     if method == "NMF":
-        model = NMF(n_components=n_comps, init="nndsvd", random_state=random_state)
+        model = NMF(n_components=n_comps, init="nndsvd", random_state=random_state)  # type: ignore
         prefix = "NMF"
     elif method == "PCA":
         model = PCA(n_components=n_comps, random_state=random_state)
@@ -329,13 +333,13 @@ def feature_dimensionality_reduction(
     reduced_features = model.fit_transform(feature_df)
     reduced_feature_df = pd.DataFrame(
         reduced_features,
-        columns=[f"{prefix}_{i}" for i in range(reduced_features.shape[1])],
+        columns=pd.Index([f"{prefix}_{i}" for i in range(reduced_features.shape[1])]),
         index=feature_df.index,
     )
     components = model.components_
     components_df = pd.DataFrame(
         components,
         columns=feature_df.columns,
-        index=[f"{prefix}_{i}" for i in range(components.shape[0])],
+        index=pd.Index([f"{prefix}_{i}" for i in range(components.shape[0])]),
     )
     return reduced_feature_df, components_df
