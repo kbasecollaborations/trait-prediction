@@ -152,17 +152,14 @@ class Feature:
         """Pandas DataFrame containing the feature data."""
         return self._feature_data.copy(deep=True)
 
-    @staticmethod
     def remove_features_with_low_variance(
-        feature_df: pd.DataFrame, threshold: float = 0.05
+        self, threshold: float = 0.05
     ) -> tuple[pd.DataFrame, list[str]]:
         """
         Removes features with low variance from the given feature DataFrame.
 
         Parameters
         ---------
-        feature_df : pd.DataFrame
-            Pandas DataFrame containing the features.
         threshold : float
             Threshold for the variance of the features.
             Default value is 0.05 which removes features with more than 95% of the values being the same.
@@ -174,6 +171,7 @@ class Feature:
         list[str]
             List of the features with low variance that were removed
         """
+        feature_df = self.feature_data
         vt = VarianceThreshold(threshold=threshold)
         vt.fit(feature_df)
         mask = vt.get_support()
@@ -182,17 +180,14 @@ class Feature:
         removed_features = list(feature_df.columns[~mask])
         return feature_df.loc[:, list(mask)], removed_features
 
-    @staticmethod
     def remove_features_with_high_correlation(
-        feature_df: pd.DataFrame, threshold: float = 0.95, method: str = "numpy"
+        self, threshold: float = 0.95, method: str = "numpy"
     ) -> tuple[pd.DataFrame, dict[str, list[str]]]:
         """
         Removes features with high correlation from the given feature DataFrame.
 
         Parameters
         ---------
-        feature_df : pd.DataFrame
-            Pandas DataFrame containing the features.
         threshold : float
             Threshold for the correlation of the features.
             Default value is 0.95
@@ -208,6 +203,7 @@ class Feature:
         dict[str, list[str]]
             Dictionary of the features with high correlation that were removed
         """
+        feature_df = self.feature_data
         # Get correlated columns
         if method == "numba_parallel":
             corr_cols = _find_corr_cols_numba_parallel(feature_df.to_numpy(), threshold)
@@ -235,9 +231,8 @@ class Feature:
             corr_group_dict,
         )
 
-    @staticmethod
     def feature_selection_kbest(
-        feature_df: pd.DataFrame,
+        self,
         target_s: pd.Series,
         score_func: str,
         n_features: int = 1000,
@@ -247,8 +242,6 @@ class Feature:
 
         Parameters
         ---------
-        feature_df : pd.DataFrame
-            Pandas DataFrame containing the features.
         target_s : pd.Series
             Pandas Series containing the target.
         score_func : str
@@ -265,6 +258,7 @@ class Feature:
         list[str]
             List of removed features with low score_func score
         """
+        feature_df = self.feature_data
         if score_func == "f_classif":
             score_function = f_classif
         elif score_func == "mutual_info_classif":
@@ -287,9 +281,8 @@ class Feature:
         removed_features = list(feature_df.columns[~kbest.get_support()])
         return kbest_feature_df, removed_features
 
-    @staticmethod
     def feature_dimensionality_reduction(
-        feature_df: pd.DataFrame,
+        self,
         method: str,
         n_components: int,
         random_state: int | None = None,
@@ -299,8 +292,6 @@ class Feature:
 
         Parameters
         ---------
-        feature_df : pd.DataFrame
-            Pandas DataFrame containing the features.
         method : str
             Supported values are 'NMF', 'PCA'
         n_components : int
@@ -316,6 +307,7 @@ class Feature:
         components_df : pd.DataFrame
             Pandas DataFrame containing the components of the dimensionality reduction.
         """
+        feature_df = self.feature_data
         min_dim = min(feature_df.shape)
         if n_components > min_dim:
             warn(
