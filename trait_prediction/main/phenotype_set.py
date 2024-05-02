@@ -1,9 +1,9 @@
 """Module that defines the PhenotypeSet class"""
 
 import pathlib
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from itertools import islice
-from typing import Iterator, NamedTuple
+from typing import Iterable, Iterator, NamedTuple
 
 from .phenotype import Phenotype
 
@@ -34,19 +34,44 @@ class PhenotypeIndex(NamedTuple):
         return cls(name=name, category=category)
 
 
-class PhenotypeSet(Sequence[Phenotype]):
-    """
-    Class that represents a collection of phenotypes.
+class PhenotypeInput(NamedTuple):
+    """Class that represents a phenotype input."""
+
+    path: pathlib.Path | str
+    category: str
+
+    @classmethod
+    def make_input(cls, path: pathlib.Path | str, category: str) -> "PhenotypeInput":
+        """
+        Creates a PhenotypeInput object.
 
         Parameters
         ---------
-        phenotypes : Iterable[Phenotype]
-            List of Phenotype objects.
+        path : pathlib.Path | str
+            Path to the phenotype file.
+        category : str
+            Category of the phenotype.
 
-        Attributes
-        ---------
-        phenotypes : list[Phenotype]
-            List of Phenotype objects.
+        Returns
+        ------
+        PhenotypeInput
+            PhenotypeInput object.
+        """
+        return cls(path=path, category=category)
+
+
+class PhenotypeSet(Sequence[Phenotype]):
+    """Class that represents a collection of phenotypes.
+
+    Parameters
+    ---------
+    phenotypes : Iterable[Phenotype]
+        List of Phenotype objects.
+
+    Attributes
+    ---------
+    phenotypes : list[Phenotype]
+        List of Phenotype objects.
     """
 
     def __init__(self, phenotypes: list[Phenotype]) -> None:
@@ -95,16 +120,15 @@ class PhenotypeSet(Sequence[Phenotype]):
 
     @classmethod
     def read_data(
-        cls, file_paths: list[str] | list[pathlib.Path], category: str
+        cls,
+        inputs: list[PhenotypeInput],
     ) -> "PhenotypeSet":
         """Reads phenotype data from multiple TSV files and returns a PhenotypeSet object.
 
         Parameters
         ----------
-        file_paths : list[str | pathlib.Path]
-            List of paths to the TSV files containing the phenotype data.
-        category : str
-            The category of the phenotypes.
+        inputs : list[PhenotypeInput]
+            List of phenotype input data.
 
         Returns
         -------
@@ -112,7 +136,9 @@ class PhenotypeSet(Sequence[Phenotype]):
             PhenotypeSet object containing the phenotype data.
         """
         phenotypes = []
-        for file_path in file_paths:
+        for phenotype_input in inputs:
+            file_path = phenotype_input.path
+            category = phenotype_input.category
             phenotypes.append(Phenotype.read_data(file_path, category))
         return cls(phenotypes)
 
