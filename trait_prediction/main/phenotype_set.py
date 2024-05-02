@@ -61,8 +61,8 @@ class PhenotypeSet(Sequence[Phenotype]):
     def __repr__(self) -> str:
         return f"PhenotypeSet (n={len(self._phenotype_dict)})"
 
-    def __getitem__(self, index: PhenotypeIndex) -> Phenotype:
-        return self._phenotype_dict[index]
+    def __getitem__(self, index):
+        return list(self._phenotype_dict.values())[index]
 
     def __len__(self) -> int:
         return len(self._phenotype_dict)
