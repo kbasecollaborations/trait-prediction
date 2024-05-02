@@ -5,8 +5,6 @@ from collections.abc import Iterable, Sequence
 from itertools import islice
 from typing import Iterator, NamedTuple
 
-import pandas as pd
-
 from .phenotype import Phenotype
 
 
@@ -95,69 +93,18 @@ class PhenotypeSet(Sequence[Phenotype]):
         """Iterable of Phenotype objects."""
         return self.__iter__()
 
-    @staticmethod
-    def _parse_phenotype_info(phenotype_str: str) -> tuple[str, str]:
-        """Parse the phenotype name and category from a string.
-
-        Parameters
-        ----------
-        phenotype_str : str
-            The string containing the phenotype name and category.
-
-        Returns
-        -------
-        tuple[str, str]
-            Phenotype name and category.
-        """
-        try:
-            name, category = phenotype_str.split("--")
-            if not category.strip():
-                category = "unknown"
-        except ValueError:
-            if phenotype_str.startswith("Unnamed"):
-                num = phenotype_str.rsplit(" ", 1)[-1]
-                name = f"unnamed_{num}"
-            else:
-                name = phenotype_str
-            category = "unknown"
-        return name.strip(), category.strip()
-
     @classmethod
-    def read_data(cls, file_path: str | pathlib.Path) -> "PhenotypeSet":
-        """
-        Reads phenotype data from a TSV file and returns a PhenotypeSet object.
-
-        Parameters
-        ---------
-        file_path : str | pahtlib.Path
-            Path to the TSV file containing the phenotype data.
-
-        Returns
-        ------
-        "PhenotypeSet"
-            PhenotypeSet object containing the phenotype data.
-
-        """
-        raw_phenotype_df = pd.read_csv(
-            file_path, sep="\t", index_col=0, dtype={"genomeID": str}
-        ).astype("Int64")
-        if raw_phenotype_df.index.name != "genomeID":
-            raise ValueError("The index of the PhenotypeSet table must be 'genomeID'")
-        phenotype_df = raw_phenotype_df.select_dtypes(include="number")
-        phenotypes = []
-        for col in phenotype_df.columns:
-            name, category = cls._parse_phenotype_info(col)
-            phenotypes.append(Phenotype(phenotype_df.loc[:, col], name, category))
-        return PhenotypeSet(phenotypes)
-
-    @classmethod
-    def read_files(cls, file_paths: list[str | pathlib.Path]) -> "PhenotypeSet":
+    def read_data(
+        cls, file_paths: list[str] | list[pathlib.Path], category: str
+    ) -> "PhenotypeSet":
         """Reads phenotype data from multiple TSV files and returns a PhenotypeSet object.
 
         Parameters
         ----------
         file_paths : list[str | pathlib.Path]
             List of paths to the TSV files containing the phenotype data.
+        category : str
+            The category of the phenotypes.
 
         Returns
         -------
@@ -166,7 +113,7 @@ class PhenotypeSet(Sequence[Phenotype]):
         """
         phenotypes = []
         for file_path in file_paths:
-            phenotypes.extend(cls.read_data(file_path).phenotypes)
+            phenotypes.append(Phenotype.read_data(file_path, category))
         return cls(phenotypes)
 
     @classmethod
