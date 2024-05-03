@@ -2,7 +2,7 @@
 
 import pathlib
 import pickle
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 import pandas as pd
 
@@ -31,10 +31,14 @@ class PhenotypeInput(NamedTuple):
         The path to the phenotype data.
     pindex : PhenotypeIndex
         Phenotype index containing the name and category of the phenotype.
+    index_format_func : Callable[[str], str]
+        Function to format the index of the feature data.
+        Eg: lambda x: x.strip().split("?")[-1].removesuffix(".RAST").removesuffix(".fna")
     """
 
     path: pathlib.Path | str
     pindex: PhenotypeIndex
+    index_format_func: Callable[[str], str]
 
 
 class Phenotype:
@@ -97,18 +101,17 @@ class Phenotype:
 
         Parameters
         ----------
-        file_path : str | pathlib.Path
-            The file path to the phenotype data.
         pinput : PhenotypeInput
-            Phenotype input containing the path and the phenotype index.
+            Phenotype input containing the path, PhenotypeIndex and index_format_func.
 
         Returns
         -------
-        "Phenotype"
+        Phenotype
             The Phenotype object.
         """
         # NOTE: We use Int64 to handle NaN values
         file_path = pinput.path
+        index_format_func = pinput.index_format_func
         raw_phenotype_df = pd.read_csv(
             file_path, sep="\t", index_col=0, dtype={"genomeID": str}
         ).astype("Int64")
@@ -117,6 +120,7 @@ class Phenotype:
         if raw_phenotype_df.shape[1] > 1:
             raise ValueError("The Phenotype table can only contain one phenotype")
         phenotype_data = raw_phenotype_df.iloc[:, 0]
+        phenotype_data.index = phenotype_data.index.apply(index_format_func)
         return Phenotype(phenotype_data, pinput.pindex)
 
     def save(self, file_path: str | pathlib.Path) -> None:
