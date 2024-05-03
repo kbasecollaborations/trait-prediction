@@ -1,63 +1,10 @@
 """Module that defines the PhenotypeSet class"""
 
-import pathlib
 from collections.abc import Sequence
 from itertools import islice
-from typing import Iterable, Iterator, NamedTuple
+from typing import Iterable, Iterator
 
 from .phenotype import Phenotype
-
-
-class PhenotypeIndex(NamedTuple):
-    """Class that represents a phenotype index."""
-
-    name: str
-    category: str
-
-    @classmethod
-    def make_index(cls, name: str, category: str) -> "PhenotypeIndex":
-        """
-        Creates a PhenotypeIndex object.
-
-        Parameters
-        ---------
-        name : str
-            Name of the phenotype.
-        category : str
-            Category of the phenotype.
-
-        Returns
-        ------
-        PhenotypeIndex
-            PhenotypeIndex object.
-        """
-        return cls(name=name, category=category)
-
-
-class PhenotypeInput(NamedTuple):
-    """Class that represents a phenotype input."""
-
-    path: pathlib.Path | str
-    category: str
-
-    @classmethod
-    def make_input(cls, path: pathlib.Path | str, category: str) -> "PhenotypeInput":
-        """
-        Creates a PhenotypeInput object.
-
-        Parameters
-        ---------
-        path : pathlib.Path | str
-            Path to the phenotype file.
-        category : str
-            Category of the phenotype.
-
-        Returns
-        ------
-        PhenotypeInput
-            PhenotypeInput object.
-        """
-        return cls(path=path, category=category)
 
 
 class PhenotypeSet(Sequence[Phenotype]):
