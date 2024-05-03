@@ -8,14 +8,30 @@ import pandas as pd
 
 
 class PhenotypeIndex(NamedTuple):
-    """Class that represents a phenotype index."""
+    """Class that represents a phenotype index.
+
+    Attributes
+    ----------
+    name : str
+        The name of the phenotype.
+    category : str
+        The category of the phenotype.
+    """
 
     name: str
     category: str
 
 
 class PhenotypeInput(NamedTuple):
-    """Class that represents a phenotype input."""
+    """Class that represents a phenotype input.
+
+    Attributes
+    ----------
+    path : pathlib.Path | str
+        The path to the phenotype data.
+    pindex : PhenotypeIndex
+        Phenotype index containing the name and category of the phenotype.
+    """
 
     path: pathlib.Path | str
     pindex: PhenotypeIndex
