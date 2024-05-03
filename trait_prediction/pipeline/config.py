@@ -25,8 +25,6 @@ class Config(BaseModel):
     minor_class_sample_size_threshold : The threshold for the minimum number of samples for a minor class
     shap_max_display : The maximum number of features to display in SHAP plots
     scoring : The scoring metrics to calculate
-    count_features : The features to treat as count features
-    float_features : The features to treat as float features
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -44,8 +42,6 @@ class Config(BaseModel):
     minor_class_sample_size_threshold: int = Field(gt=0)
     shap_max_display: int = Field(gt=0)
     scoring: list[str]
-    count_features: list[str]
-    float_features: list[str]
 
     @classmethod
     def load_config(cls, config_path: pathlib.Path) -> "Config":
