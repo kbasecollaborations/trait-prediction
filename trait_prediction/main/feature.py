@@ -1,7 +1,7 @@
 """Module that defines the Feature class"""
 
 import pathlib
-from typing import Callable
+from typing import Callable, NamedTuple
 from warnings import warn
 
 import pandas as pd
@@ -23,6 +23,43 @@ from .feature_selection import (
 )
 
 
+class FeatureIndex(NamedTuple):
+    """Class that represents a feature index.
+
+    Attributes
+    ----------
+    name : str
+        The name of the feature.
+    ftype : str
+        The type of the feature data. Either 'count', 'float' or 'binary'.
+    dtype : str
+        The data type of the feature data.
+    """
+
+    name: str
+    ftype: str
+    dtype: str
+
+
+class FeatureInput(NamedTuple):
+    """Class that represents a feature input.
+
+    Attributes
+    ----------
+    path : pathlib.Path | str
+        The path to the feature data.
+    findex : FeatureIndex
+        The FeatureIndex object containing the name, ftype and dtype of the feature.
+    index_format_func : Callable[[str], str]
+        Function to format the index of the feature data.
+        Eg: lambda x: x.strip().split("?")[-1].removesuffix(".RAST").removesuffix(".fna")
+    """
+
+    path: pathlib.Path | str
+    findex: FeatureIndex
+    index_format_func: Callable[[str], str]
+
+
 class Feature:
     """The Feature class.
 
@@ -30,26 +67,19 @@ class Feature:
     ----------
     raw_feature_data : pd.DataFrame
         The raw feature data.
-    name : str
-        The name of the feature.
-    ftype : str
-        The type of the feature data. Either 'count', 'float' or 'binary'.
-    dtype : str
-        The data type of the feature data.
+    findex : FeatureIndex
+        The FeatureIndex object containing the name, ftype and dtype of the feature.
 
     Attributes
     ----------
-    name : The name of the feature.
-    ftype : The type of the feature data. Either 'count', 'float' or 'binary'.
-    dtype : The data type of the feature data.
+    findex : FeatureIndex
+        The FeatureIndex object containing the name, ftype and dtype of the feature.
+    feature_data : pd.DataFrame
+        Pandas DataFrame containing the feature data.
     """
 
-    def __init__(
-        self, raw_feature_data: pd.DataFrame, name: str, ftype: str, dtype: str
-    ) -> None:
-        self.name = name
-        self.ftype = ftype
-        self.dtype = dtype
+    def __init__(self, raw_feature_data: pd.DataFrame, findex: FeatureIndex) -> None:
+        self.findex = findex
         self._feature_data: pd.DataFrame = self._parse_feature_data(raw_feature_data)
 
     def _parse_feature_data(self, raw_feature_data: pd.DataFrame) -> pd.DataFrame:
@@ -65,7 +95,7 @@ class Feature:
         pd.DataFrame
             Pandas DataFrame containing the filtered feature data.
         """
-        undup_raw_feature_data = raw_feature_data.dropna().astype(self.dtype)
+        undup_raw_feature_data = raw_feature_data.dropna().astype(self.findex.dtype)
         return undup_raw_feature_data.loc[
             ~undup_raw_feature_data.index.duplicated(keep="first"), :
         ]
@@ -73,47 +103,34 @@ class Feature:
     def __repr__(self) -> str:
         n_genomes = self._feature_data.shape[0]
         n_features = self._feature_data.shape[1]
-        return f"Feature (name={self.name}, type={self.ftype}, dtype={self.dtype}, n_genomes={n_genomes}, n_features={n_features})"
+        return (
+            f"Feature (name={self.findex.name}, type={self.findex.ftype},"
+            f" dtype={self.findex.dtype}, n_genomes={n_genomes}, n_features={n_features})"
+        )
 
     def __hash__(self) -> int:
-        unique_id = {
-            "name": self.name,
-            "ftype": self.ftype,
-            "dtype": self.dtype,
-        }
-        return hash(unique_id)
+        return hash(self.findex)
 
     @classmethod
     def read_data(
         cls,
-        file_path: str | pathlib.Path,
-        name: str,
-        ftype: str,
-        dtype: str,
-        index_format_func: Callable[[str], str],
+        finput: FeatureInput,
     ) -> "Feature":
         """Reads feature data from a TSV file and returns a Feature object.
 
         Parameters
         ----------
-        file_path : str | pathlib.Path
-            Path to the TSV file containing the feature data.
-        name : str
-            Name of the feature.
-        ftype : str
-            Type of the feature data.
-            Either 'count', 'float' or 'binary'.
-        dtype : str
-            Data type of the feature data.
-        index_format_func : Callable[[str], str]
-            Function to format the index of the feature data.
-            Eg: lambda x: x.strip().split("?")[-1].removesuffix(".RAST").removesuffix(".fna")
+        finput : FeatureInput
+            Feature input containing the path, FeatureIndex and index_format_func.
 
         Returns
         -------
         Feature
             The Feature object.
         """
+        file_path = finput.path
+        ftype = finput.findex.ftype
+        index_format_func = finput.index_format_func
         with open(file_path, "r") as fid:
             header = fid.readline().strip().split("\t")
         dtypes = dict()
@@ -145,7 +162,7 @@ class Feature:
             feature_df[feature_df > 0] = 1
         feature_df = feature_df.set_index(header[0]).fillna(0).astype(final_dtype)
         feature_df.index.name = "genomeID"
-        return cls(feature_df, name, ftype, dtype)
+        return cls(feature_df, finput.findex)
 
     @property
     def feature_data(self) -> pd.DataFrame:
