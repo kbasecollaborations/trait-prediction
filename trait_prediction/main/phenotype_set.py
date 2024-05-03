@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from itertools import islice
 from typing import Iterable, Iterator
 
-from .phenotype import Phenotype
+from .phenotype import Phenotype, PhenotypeIndex, PhenotypeInput
 
 
 class PhenotypeSet(Sequence[Phenotype]):
@@ -23,10 +23,7 @@ class PhenotypeSet(Sequence[Phenotype]):
 
     def __init__(self, phenotypes: list[Phenotype]) -> None:
         super().__init__()
-        self._phenotype_dict = {
-            PhenotypeIndex(name=phenotype.name, category=phenotype.category): phenotype
-            for phenotype in phenotypes
-        }
+        self._phenotype_dict = {phenotype.pindex: phenotype for phenotype in phenotypes}
 
     def __repr__(self) -> str:
         return f"PhenotypeSet (n={len(self._phenotype_dict)})"
@@ -42,23 +39,21 @@ class PhenotypeSet(Sequence[Phenotype]):
 
     # NOTE: __contains__, __reversed__, index and count methods are mixins
 
-    def get_phenotype(self, name: str, category: str) -> Phenotype:
+    def get_phenotype(self, pindex: PhenotypeIndex) -> Phenotype:
         """
         Get a phenotype by name and category.
 
         Parameters
         ---------
-        name : str
-            Name of the phenotype.
-        category : str
-            Category of the phenotype.
+        pindex : PhenotypeIndex
+            Phenotype index containing the name and category of the phenotype.
 
         Returns
         ------
         Phenotype
             Phenotype object.
         """
-        return self._phenotype_dict[PhenotypeIndex.make_index(name, category)]
+        return self._phenotype_dict[pindex]
 
     @property
     def phenotypes(self) -> Iterable[Phenotype]:
@@ -68,13 +63,13 @@ class PhenotypeSet(Sequence[Phenotype]):
     @classmethod
     def read_data(
         cls,
-        inputs: list[PhenotypeInput],
+        pinputs: list[PhenotypeInput],
     ) -> "PhenotypeSet":
         """Reads phenotype data from multiple TSV files and returns a PhenotypeSet object.
 
         Parameters
         ----------
-        inputs : list[PhenotypeInput]
+        pinputs : list[PhenotypeInput]
             List of phenotype input data.
 
         Returns
@@ -83,10 +78,8 @@ class PhenotypeSet(Sequence[Phenotype]):
             PhenotypeSet object containing the phenotype data.
         """
         phenotypes = []
-        for phenotype_input in inputs:
-            file_path = phenotype_input.path
-            category = phenotype_input.category
-            phenotypes.append(Phenotype.read_data(file_path, category))
+        for pinput in pinputs:
+            phenotypes.append(Phenotype.read_data(pinput))
         return cls(phenotypes)
 
     @classmethod
