@@ -1,13 +1,13 @@
 """Module that defines the PhenotypeSet class"""
 
-from collections.abc import Sequence
+from collections.abc import Set
 from itertools import islice
 from typing import Iterable, Iterator
 
 from .phenotype import Phenotype, PhenotypeIndex, PhenotypeInput
 
 
-class PhenotypeSet(Sequence[Phenotype]):
+class PhenotypeSet(Set[Phenotype]):
     """Class that represents a collection of phenotypes.
 
     Parameters
@@ -36,8 +36,6 @@ class PhenotypeSet(Sequence[Phenotype]):
 
     def __iter__(self) -> Iterator[Phenotype]:
         yield from self._phenotype_dict.values()
-
-    # NOTE: __contains__, __reversed__, index and count methods are mixins
 
     def get_phenotype(self, pindex: PhenotypeIndex) -> Phenotype:
         """

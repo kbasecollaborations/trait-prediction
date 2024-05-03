@@ -1,12 +1,12 @@
 """Module that defines the FeatureSet class"""
 
-from collections.abc import Sequence
+from collections.abc import Set
 from typing import Iterable, Iterator
 
 from .feature import Feature, FeatureIndex, FeatureInput
 
 
-class FeatureSet(Sequence[Feature]):
+class FeatureSet(Set[Feature]):
     """Class that represents a collection of features.
 
     Parameters
@@ -35,8 +35,6 @@ class FeatureSet(Sequence[Feature]):
 
     def __iter__(self) -> Iterator[Feature]:
         return iter(self._feature_dict.values())
-
-    # NOTE: __contains__, __reversed__, index and count methods are mixins
 
     def get_feature(self, findex: FeatureIndex) -> Feature:
         """
