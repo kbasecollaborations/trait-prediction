@@ -14,39 +14,39 @@ class DataSet:
 
     Attributes
     ----------
-    feature_set : FeatureSet
-        FeatureSet object.
     phenotype_set : PhenotypeSet
         PhenotypeSet object.
+    feature_set : FeatureSet
+        FeatureSet object.
     """
 
-    feature_set: FeatureSet
     phenotype_set: PhenotypeSet
+    feature_set: FeatureSet
 
     @classmethod
     def read_data(
         cls,
-        finputs: list[FeatureInput],
         pinputs: list[PhenotypeInput],
+        finputs: list[FeatureInput],
     ) -> "DataSet":
         """
         Reads the feature and phenotype data from the given inputs.
 
         Parameters
         ---------
-        finputs : list[FeatureInput]
-            List of FeatureInput objects.
         pinputs : list[PhenotypeInput]
             List of PhenotypeInput objects.
+        finputs : list[FeatureInput]
+            List of FeatureInput objects.
 
         Returns
         ------
         DataSet
             DataSet object.
         """
-        feature_set = FeatureSet.read_data(finputs)
         phenotype_set = PhenotypeSet.read_data(pinputs)
-        return cls(feature_set, phenotype_set)
+        feature_set = FeatureSet.read_data(finputs)
+        return cls(phenotype_set, feature_set)
 
     def get_phenotype(self, pindex: PhenotypeIndex):
         """
