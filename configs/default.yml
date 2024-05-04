@@ -1,6 +1,7 @@
-variance_threshold: 0.01 # if v=0.01, p=0.01 or 0.99
-correlation_threshold: false # NOTE: Disabling correlation filtering for now
-imbalanced: false # NOTE: Disabling imbalanced sampling for now
+# NOTE: For binary features, v=p(1-p); if v=0.01 => p=0.01 or 0.99
+variance_threshold: 0.01
+correlation_threshold: false
+imbalanced: false
 test_size: 0.3
 n_splits: 5
 phenotype_sample_size_threshold: 20
