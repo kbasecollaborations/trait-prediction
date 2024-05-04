@@ -16,7 +16,7 @@ class Config(BaseModel):
     reduction_functions : The reduction functions for feature dimensionality reduction
     n_feature_reduction : The number of features to reduce to
     random_seed: The random seed to use
-    variance_treshold : The variance threshold to use for feature reduction
+    variance_threshold : The variance threshold to use for feature reduction
     correlation_threshold : The correlation threshold to use for feature reduction
     imbalanced : Whether to perform imbalanced sampling
     test_size : The size of the test set
@@ -34,7 +34,7 @@ class Config(BaseModel):
     reduction_functions: list[str]
     n_feature_reduction: int = Field(gt=0)
     random_seed: int
-    variance_treshold: float = Field(ge=0, le=1)
+    variance_threshold: float = Field(ge=0, le=1)
     correlation_threshold: float | None = Field(None, ge=0, le=1)
     imbalanced: bool
     test_size: float = Field(gt=0, lt=1)
