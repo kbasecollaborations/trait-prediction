@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import KFold, StratifiedKFold, cross_validate
 
-from ..main import Feature, Phenotype
+from ..main import Feature, FeatureIndex, Phenotype, PhenotypeIndex
 from .sampling import (
     perform_imbalanced_sampling,
     perform_ooc_sampling,
@@ -60,6 +60,8 @@ class CVData(NamedTuple):
 class Score(NamedTuple):
     """The scores obtained from get_scores method"""
 
+    pindex: PhenotypeIndex
+    findex: FeatureIndex
     scores: pd.DataFrame
     estimators: list
 
@@ -277,7 +279,11 @@ class Predictor:
         elif kind == "test":
             if self.training_data is None:
                 raise ValueError("Data has not been prepared. Call `split_data` first.")
-            cv = [(self.training_data.X_train.index, self.training_data.X_test.index)]
+            train_indices = self.training_data.X_train.index
+            train_iloc = [X.index.get_loc(i) for i in train_indices]
+            test_indices = self.training_data.X_test.index
+            test_iloc = [X.index.get_loc(i) for i in test_indices]
+            cv = [(train_iloc, test_iloc)]
         else:
             raise ValueError("kind must be 'CV' or 'test'.")
         cv_results = cross_validate(
@@ -293,8 +299,23 @@ class Predictor:
         scores_data = {
             k.lstrip("test_"): v for k, v in cv_results.items() if k.startswith("test_")
         }
+        for train_indices, test_indices in cv:
+            y_train, y_test = y.iloc[train_indices], y.iloc[test_indices]
+            train_class_counts = y_train.value_counts()
+            test_class_counts = y_test.value_counts()
+            scores_data["train_class_0"] = train_class_counts.get(0, 0)
+            scores_data["train_class_1"] = train_class_counts.get(1, 0)
+            scores_data["test_class_0"] = test_class_counts.get(0, 0)
+            scores_data["test_class_1"] = test_class_counts.get(1, 0)
         scores_df = pd.DataFrame(scores_data)
-        scores = Score(scores=scores_df, estimators=cv_results["estimator"])
+        pindex = self.phenotype.pindex
+        findex = self.feature.findex
+        scores = Score(
+            pindex=pindex,
+            findex=findex,
+            scores=scores_df,
+            estimators=cv_results["estimator"],
+        )
         return scores
 
     def save(self, folder: str | pathlib.Path) -> None:
