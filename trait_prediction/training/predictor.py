@@ -73,6 +73,25 @@ class CVData(NamedTuple):
     folds: Iterable[tuple[np.ndarray, np.ndarray]]
     stratified: bool
 
+    def save_indices(self, phenotype: Phenotype, folder: str | pathlib.Path) -> None:
+        """Save the training and testing indices to a folder.
+
+        Parameters
+        ----------
+        folder : str | pathlib.Path
+            Folder to save the objects
+        """
+        folder = pathlib.Path(folder)
+        folder.mkdir(exist_ok=True, parents=True)
+        pdata = phenotype.phenotype_data
+        for i, (train_ilocs, test_ilocs) in enumerate(self.folds):
+            train_indices = [str(pdata.index[i]) for i in train_ilocs]
+            test_indices = [str(pdata.index[i]) for i in test_ilocs]
+            with open(folder / f"cv_train_indices_{i}.txt", "w") as fid:
+                fid.write("\n".join(train_indices))
+            with open(folder / f"cv_test_indices_{i}.txt", "w") as fid:
+                fid.write("\n".join(test_indices))
+
 
 class Score(NamedTuple):
     """The scores obtained from get_scores method"""
