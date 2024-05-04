@@ -48,6 +48,23 @@ class TrainingData(NamedTuple):
     sampling_type: str
     imbalanced_sampling_type: str | None
 
+    def save_indices(self, folder: str | pathlib.Path) -> None:
+        """Save the training and testing indices to a folder.
+
+        Parameters
+        ----------
+        folder : str | pathlib.Path
+            Folder to save the objects
+        """
+        folder = pathlib.Path(folder)
+        folder.mkdir(exist_ok=True, parents=True)
+        train_indices = self.X_train.index
+        test_indices = self.X_test.index
+        with open(folder / "train_indices.txt", "w") as fid:
+            fid.write("\n".join(train_indices))
+        with open(folder / "test_indices.txt", "w") as fid:
+            fid.write("\n".join(test_indices))
+
 
 class CVData(NamedTuple):
     """The training and testing data for cross validation."""
