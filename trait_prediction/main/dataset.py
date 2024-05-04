@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Iterable
 
 from .feature import Feature, FeatureIndex, FeatureInput
 from .feature_set import FeatureSet
@@ -46,7 +47,7 @@ class DataSet:
         feature_set = FeatureSet.read_data(finputs)
         return cls(phenotype_set, feature_set)
 
-    def get_phenotype(self, pindex: PhenotypeIndex):
+    def get_phenotype(self, pindex: PhenotypeIndex) -> Phenotype:
         """
         Get a phenotype by name and category.
 
@@ -62,7 +63,7 @@ class DataSet:
         """
         return self.phenotype_set.get_phenotype(pindex)
 
-    def get_feature(self, findex: FeatureIndex):
+    def get_feature(self, findex: FeatureIndex) -> Feature:
         """
         Returns the Feature object with the given name, ftype and dtype.
 
@@ -79,12 +80,12 @@ class DataSet:
         return self.feature_set.get_feature(findex)
 
     @property
-    def features(self):
+    def features(self) -> Iterable[Feature]:
         """Iterable of Feature objects."""
         return self.feature_set.features
 
     @property
-    def phenotypes(self):
+    def phenotypes(self) -> Iterable[Phenotype]:
         """Iterable of Phenotype objects."""
         return self.phenotype_set.phenotypes
 
