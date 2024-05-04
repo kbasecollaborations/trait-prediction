@@ -62,6 +62,7 @@ class Score(NamedTuple):
 
     pindex: PhenotypeIndex
     findex: FeatureIndex
+    kind: str
     scores: pd.DataFrame
     estimators: list
 
@@ -313,6 +314,7 @@ class Predictor:
         scores = Score(
             pindex=pindex,
             findex=findex,
+            kind=kind,
             scores=scores_df,
             estimators=cv_results["estimator"],
         )
