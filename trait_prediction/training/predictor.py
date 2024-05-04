@@ -102,6 +102,40 @@ class Score(NamedTuple):
     scores: pd.DataFrame
     estimators: list
 
+    def save_scores(self, folder: str | pathlib.Path) -> None:
+        """Save the scores to a folder.
+
+        Parameters
+        ----------
+        folder : str | pathlib.Path
+            Folder to save the objects
+        """
+        folder = pathlib.Path(folder)
+        folder.mkdir(exist_ok=True, parents=True)
+        scores = self.scores.copy(deep=True)
+        scores["phenotype_name"] = self.pindex.name
+        scores["phenotype_category"] = self.pindex.category
+        scores["feature_name"] = self.findex.name
+        scores["feature_ftype"] = self.findex.ftype
+        scores["feature_dtype"] = self.findex.dtype
+        scores_file = folder / f"scores_{self.kind}.csv"
+        self.scores.to_csv(scores_file)
+
+    def save_estimators(self, folder: str | pathlib.Path) -> None:
+        """Save the estimators to a folder.
+
+        Parameters
+        ----------
+        folder : str | pathlib.Path
+            Folder to save the objects
+        """
+        folder = pathlib.Path(folder)
+        folder.mkdir(exist_ok=True, parents=True)
+        for i, estimator in enumerate(self.estimators):
+            estimator_file = folder / f"estimator_{self.kind}_{i}.pkl"
+            with open(estimator_file, "wb") as fid:
+                pickle.dump(estimator, fid)
+
 
 class Predictor:
     """Class that performs machine learning on the phenotype and feature data.
