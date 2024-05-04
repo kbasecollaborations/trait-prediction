@@ -1,1 +1,1 @@
-from .phenotype_predictor import PhenotypePredictor
+from .predictor import Predictor
