@@ -18,22 +18,3 @@ scoring:
     "roc_auc",
     "matthews_corrcoef",
   ]
-
-count_features:
-  [
-    "rast",
-    "kofam",
-    "uniref30",
-    "uniref50",
-    "uniref70",
-    "uniref90",
-    "cluster30",
-    "cluster50",
-    "cluster70",
-    "cluster90",
-    "eggnog_kegg",
-    "uniprot_trembl",
-    "eggnog_seed",
-    "combined",
-  ]
-float_features: ["kofam_modules", "NMF", "PCA"]
