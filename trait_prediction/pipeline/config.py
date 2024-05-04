@@ -20,6 +20,7 @@ class Config(BaseModel):
     correlation_threshold : The correlation threshold to use for feature reduction
     imbalanced : Whether to perform imbalanced sampling
     test_size : The size of the test set
+    cross_validation : Whether to perform cross-validation
     n_splits : The number of splits to use for cross-validation
     phenotype_sample_size_threshold : The threshold for the minimum number of samples for a phenotype
     minor_class_sample_size_threshold : The threshold for the minimum number of samples for a minor class
@@ -37,6 +38,7 @@ class Config(BaseModel):
     correlation_threshold: float | None = Field(None, ge=0, le=1)
     imbalanced: bool
     test_size: float = Field(gt=0, lt=1)
+    cross_validation: bool
     n_splits: int = Field(gt=0)
     phenotype_sample_size_threshold: int = Field(gt=0)
     minor_class_sample_size_threshold: int = Field(gt=0)

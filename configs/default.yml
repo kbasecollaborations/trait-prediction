@@ -3,6 +3,7 @@ variance_threshold: 0.01
 correlation_threshold: false
 imbalanced: false
 test_size: 0.3
+cross_validation: true
 n_splits: 5
 phenotype_sample_size_threshold: 20
 minor_class_sample_size_threshold: 10
