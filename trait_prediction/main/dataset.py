@@ -5,8 +5,6 @@ from .feature_set import FeatureSet
 from .phenotype import Phenotype, PhenotypeIndex, PhenotypeInput
 from .phenotype_set import PhenotypeSet
 
-# TODO: Only match the phenotype and feature matrix that is asked for -> eg. get_xy_data method
-
 
 @dataclass
 class DataSet:
