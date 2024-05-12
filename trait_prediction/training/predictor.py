@@ -2,7 +2,8 @@
 
 import pathlib
 import pickle
-from typing import Iterable, NamedTuple
+from dataclasses import dataclass
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -16,7 +17,8 @@ from .sampling import (
 )
 
 
-class TrainingData(NamedTuple):
+@dataclass
+class TrainingData:
     """The training and testing data for the machine learning.
 
     Attributes
@@ -66,7 +68,8 @@ class TrainingData(NamedTuple):
             fid.write("\n".join(test_indices))
 
 
-class CVData(NamedTuple):
+@dataclass
+class CVData:
     """The training and testing data for cross validation."""
 
     CVClass: KFold | StratifiedKFold
@@ -93,7 +96,8 @@ class CVData(NamedTuple):
                 fid.write("\n".join(test_indices))
 
 
-class Score(NamedTuple):
+@dataclass
+class Score:
     """The scores obtained from get_scores method"""
 
     pindex: PhenotypeIndex

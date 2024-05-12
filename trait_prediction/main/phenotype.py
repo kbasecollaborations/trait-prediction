@@ -2,12 +2,14 @@
 
 import pathlib
 import pickle
-from typing import Callable, NamedTuple
+from dataclasses import dataclass
+from typing import Callable
 
 import pandas as pd
 
 
-class PhenotypeIndex(NamedTuple):
+@dataclass
+class PhenotypeIndex:
     """Class that represents a phenotype index.
 
     Attributes
@@ -22,7 +24,8 @@ class PhenotypeIndex(NamedTuple):
     category: str
 
 
-class PhenotypeInput(NamedTuple):
+@dataclass
+class PhenotypeInput:
     """Class that represents a phenotype input.
 
     Attributes

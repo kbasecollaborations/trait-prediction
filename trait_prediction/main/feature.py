@@ -1,7 +1,8 @@
 """Module that defines the Feature class"""
 
 import pathlib
-from typing import Callable, NamedTuple
+from dataclasses import dataclass
+from typing import Callable
 from warnings import warn
 
 import pandas as pd
@@ -23,7 +24,8 @@ from .feature_selection import (
 )
 
 
-class FeatureIndex(NamedTuple):
+@dataclass
+class FeatureIndex:
     """Class that represents a feature index.
 
     Attributes
@@ -41,7 +43,8 @@ class FeatureIndex(NamedTuple):
     dtype: str
 
 
-class FeatureInput(NamedTuple):
+@dataclass
+class FeatureInput:
     """Class that represents a feature input.
 
     Attributes
@@ -299,9 +302,10 @@ class Feature:
             columns=feature_df.columns[kbest.get_support()],
             index=feature_df.index,
         )
-        if kbest.get_support() is None:
+        support = kbest.get_support()
+        if support is None:
             raise ValueError("No features were selected")
-        removed_features = list(feature_df.columns[~kbest.get_support()])
+        removed_features = list(feature_df.columns[~support])
         return kbest_feature_df, removed_features
 
     @staticmethod
