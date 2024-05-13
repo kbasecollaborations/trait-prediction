@@ -150,6 +150,8 @@ class ExperimentResult:
         low_var_features: list[str],
         correlated_features_dict: dict[str, list[str]],
         low_score_features: list[str],
+        components_df: pd.DataFrame | None,
+        feature_data: pd.DataFrame,
     ) -> None:
         """Log the preprocessing data.
 
@@ -161,6 +163,10 @@ class ExperimentResult:
             The features with high correlation that were removed.
         low_score_features : list[str]
             The features with low score_func score that were removed.
+        components_df : pd.DataFrame | None
+            The components dataframe.
+        feature_data : pd.DataFrame
+            The features dataframe.
         """
         output_dir = self.run_dir / "data"
         with open(output_dir / "low_var_features_list.txt", "w") as fid:
@@ -169,6 +175,11 @@ class ExperimentResult:
             json.dump(correlated_features_dict, gzfile)
         with open(output_dir / "low_score_features_list.txt", "w") as fid:
             fid.write("\n".join(low_score_features))
+        if components_df is not None:
+            components_df.to_csv(output_dir / "components.tsv", sep="\t", index=True)
+            feature_data.to_csv(
+                output_dir / "features_reduced.tsv", sep="\t", index=True
+            )
 
     def log_data(self, predictor: Predictor) -> None:
         """Log the training data.

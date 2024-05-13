@@ -269,7 +269,11 @@ class PredictionPipeline:
         feature_train = Feature(feature_data, feature.findex)
         # Log the preprocessing data
         experiment_result.log_preprocessing_data(
-            low_var_features, corr_group_dict, low_score_features
+            low_var_features,
+            corr_group_dict,
+            low_score_features,
+            components_df,
+            feature_data,
         )
         # Create the predictor
         if ftype == "binary":
