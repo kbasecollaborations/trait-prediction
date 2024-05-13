@@ -37,6 +37,9 @@ class PhenotypeSet(Set[Phenotype]):
     def __iter__(self) -> Iterator[Phenotype]:
         yield from self._phenotype_dict.values()
 
+    def __contains__(self, phenotype: Phenotype) -> bool:  # type: ignore
+        return phenotype.pindex in self._phenotype_dict
+
     def get_phenotype(self, pindex: PhenotypeIndex) -> Phenotype:
         """
         Get a phenotype by name and category.
