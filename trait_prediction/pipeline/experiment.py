@@ -80,8 +80,11 @@ class ExperimentResult:
             The run ID.
         """
         alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
-        run_dir = existing_dirs[0]
-        while run_dir in existing_dirs:
+        if existing_dirs:
+            run_dir = existing_dirs[0]
+            while run_dir in existing_dirs:
+                run_dir = "".join(random.choices(alphabet, k=length))
+        else:
             run_dir = "".join(random.choices(alphabet, k=length))
         return run_dir
 
@@ -294,8 +297,13 @@ class Experiment(Set[ExperimentResult]):
         str
             The experiment ID.
         """
-        experiment_dir = existing_dirs[0]
-        while experiment_dir in existing_dirs:
+        if existing_dirs:
+            experiment_dir = existing_dirs[0]
+            while experiment_dir in existing_dirs:
+                left_name = random.choice(cls._names["left"])
+                right_name = random.choice(cls._names["right"])
+                experiment_dir = f"{left_name}{sep}{right_name}"
+        else:
             left_name = random.choice(cls._names["left"])
             right_name = random.choice(cls._names["right"])
             experiment_dir = f"{left_name}{sep}{right_name}"
