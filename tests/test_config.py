@@ -1,11 +1,20 @@
+import pytest
 from hydra import compose, initialize
 from omegaconf import OmegaConf
+from pydantic import ValidationError
 
 from trait_prediction.pipeline import Config
 
 
 def test_default_config(default_config_path):
-    Config.load_config(default_config_path)
+    config_path = default_config_path / "default.yaml"
+    Config.load_config(config_path)
+
+
+def test_bad_config(default_config_path):
+    config_path = default_config_path / "bad_config.yaml"
+    with pytest.raises(ValidationError):
+        Config.load_config(config_path)
 
 
 def test_hydra_load_config(hydra_path):
