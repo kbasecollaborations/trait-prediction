@@ -281,6 +281,15 @@ class Experiment(Set[ExperimentResult]):
     def __repr__(self):
         return f"Experiment (n={len(self._results)}, dir={self.experiment_dir})"
 
+    def __len__(self):
+        return len(self._results)
+
+    def __iter__(self):
+        return iter(self._results)
+
+    def __contains__(self, item):
+        return item in self._results
+
     @classmethod
     def generate_experiment_id(cls, existing_dirs: list[str], sep: str) -> str:
         """Generate a unique experiment ID.
