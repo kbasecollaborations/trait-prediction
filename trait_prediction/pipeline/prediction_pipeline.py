@@ -35,6 +35,10 @@ class TaskData:
         The output directory.
     random_state : int
         The random state.
+    progress : mp.Value
+        The progress value.
+    n_tasks : int
+        The number of tasks.
     """
 
     phenotype: Phenotype
@@ -44,6 +48,8 @@ class TaskData:
     make_classifier: Callable[[int, list[str] | None], Any]
     output_dir: Path
     random_state: int
+    progress: mp.Value  # type: ignore
+    n_tasks: int = 0
 
     def get_metadata(self) -> dict:
         """Get the metadata for the task.
@@ -81,18 +87,28 @@ class PredictionPipeline:
         n_cpus: int,
         random_state: int,
     ):
-        self.config = Config.load_config(config_path)
-        self.dataset = DataSet.read_data(pinputs, finputs)
+        logger.enable("trait_prediction")
         self.make_classifier = make_classifier
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
         self._initialize_experiment()
+        log_file = self.experiment.experiment_dir / "experiment.log"
+        logger.add(log_file, enqueue=True, mode="w")
+        logger.info(f"Initialized experiment at {self.experiment.experiment_dir}")
+        self.config = Config.load_config(config_path)
+        logger.info(f"Loaded configuration from {config_path}")
+        self.dataset = DataSet.read_data(pinputs, finputs)
+        logger.info("Loaded dataset")
+        self._update_metadata()
+        logger.info("Updated and logged metadata")
 
-    def _initialize_experiment(self):
+    def _initialize_experiment(self) -> None:
         """Initialize the experiment."""
         existing_dirs = [d.name for d in self.output_dir.iterdir() if d.is_dir()]
         self.experiment = Experiment.initialize(existing_dirs, "_")
+
+    def _update_metadata(self) -> None:
         metadata = {
             "config": self.config.model_dump(),
             "n_cpus": self.n_cpus,
@@ -239,32 +255,47 @@ class PredictionPipeline:
 
     @staticmethod
     def _run_task(task_data: TaskData):
+        """Run the task.
+
+        Parameters
+        ----------
+        task_data : TaskData
+            The task data.
+        """
+        experiment = task_data.experiment
+        experiment_result = experiment.create_result()
+        task_logger = logger.bind(worker_id=mp.current_process().name)
+        log_file = experiment_result.run_dir / "task.log"
+        task_logger.add(log_file, enqueue=True, mode="w")
         phenotype = task_data.phenotype
         feature = task_data.feature
         config = task_data.config
-        experiment = task_data.experiment
         make_classifier = task_data.make_classifier
         random_state = task_data.random_state
-        experiment_result = experiment.create_result()
-        metadata = task_data.get_metadata()
         # Log the metadata
+        task_logger.info("Task setup successfully. Logging metadata")
+        metadata = task_data.get_metadata()
         experiment_result.log_metadata(metadata)
         ftype = feature.findex.ftype
         feature_data = feature.feature_data
         phenotype_data = phenotype.phenotype_data
+        task_logger.info("Preprocessing data")
         # Check if the data is good for training
         if not PredictionPipeline.is_xdata_good(feature_data, config):
             return None
         if not PredictionPipeline.is_ydata_good(phenotype_data, config):
             return None
+        task_logger.info("Data is good for training")
         # Preprocess the feature data
         feature_data, low_var_features, corr_group_dict = (
             PredictionPipeline.preprocess_feature_data(feature_data, ftype, config)
         )
+        task_logger.info("Feature data preprocessed")
         # Select features
         feature_data, low_score_features, components_df = (
             PredictionPipeline.select_features(feature_data, phenotype_data, config)
         )
+        task_logger.info("Features selected")
         phenotype_train = Phenotype(phenotype_data, phenotype.pindex)
         feature_train = Feature(feature_data, feature.findex)
         # Log the preprocessing data
@@ -275,6 +306,7 @@ class PredictionPipeline:
             components_df,
             feature_data,
         )
+        task_logger.info("Preprocessing data logged")
         # Create the predictor
         if ftype == "binary":
             categorical_feature_names = []
@@ -285,6 +317,7 @@ class PredictionPipeline:
             categorical_feature_names = None
         classifier = make_classifier(random_state, categorical_feature_names)
         predictor = Predictor(phenotype_train, feature_train, classifier, random_state)
+        task_logger.info("Predictor created")
         # Split the data into training and testing sets
         if config.cross_validation:
             predictor.split_data_cv(n_splits=config.n_splits, stratify=True)
@@ -297,19 +330,31 @@ class PredictionPipeline:
                 stratify=True,
             )
             score = predictor.get_score(kind="test", n_jobs=1, scoring=config.scoring)
+        task_logger.info("Data split and scored")
         # Log the training data
         experiment_result.log_data(predictor)
+        task_logger.info("Data logged")
         # Log the metrics
         experiment_result.log_metrics(score)
+        task_logger.info("Metrics logged")
         # Log the models
         if config.log_models:
             experiment_result.log_models(score)
+            task_logger.info("Models logged")
         # Log the plots
         experiment_result.log_plots(score, feature_data, config)
+        task_logger.info("Plots logged")
+        with task_data.progress.get_lock():
+            task_data.progress.value += 1
+        task_logger.info(
+            f"Completed task. Progress: {task_data.progress.value} of {task_data.n_tasks}"
+        )
 
     def run(self):
         """Run the pipeline."""
         tasks: list[TaskData] = []
+        logger.info("Running the pipeline")
+        progress = mp.Value("i", 0)
         for feature_raw in self.dataset.feature_set:
             for phenotype_raw in self.dataset.phenotype_set:
                 phenotype, feature = self.dataset.get_data(
@@ -323,10 +368,16 @@ class PredictionPipeline:
                     make_classifier=self.make_classifier,
                     output_dir=self.output_dir,
                     random_state=self.random_state,
+                    progress=progress,
                 )
                 tasks.append(task)
+        for task in tasks:
+            task.n_tasks = len(tasks)
+        logger.info(f"Generated {len(tasks)} tasks")
         with mp.Pool(self.n_cpus) as pool:
-            results = []
-            # TODO: Replace tqdm with mp.Value & logger to track progress
-            for result in tqdm(pool.imap(self._run_task, tasks), total=len(tasks)):
-                results.append(result)
+            results = pool.map(self._run_task, tasks)
+        with progress.get_lock():
+            progress.value = len(tasks)
+        logger.info(
+            "Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
+        )
