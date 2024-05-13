@@ -256,7 +256,7 @@ class Predictor:
             imbalanced_sampling_type=imbalanced_sampling_type,
         )
 
-    def split_data_cv(self, n_splits: int, stratify: bool) -> None:
+    def split_data_cv(self, n_splits: int, stratify: bool = True) -> None:
         """Split the data into train and test sets using cross validation.
 
         Parameters
