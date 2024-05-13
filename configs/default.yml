@@ -7,7 +7,7 @@ random_state: 42
 variance_threshold: 0.01
 correlation_threshold: false
 sampling_type: "random"
-imbalance_correction: false
+imbalance_correction: null
 test_size: 0.3
 cross_validation: true
 n_splits: 5
