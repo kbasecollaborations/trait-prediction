@@ -37,6 +37,7 @@ class Config(BaseModel):
     minor_class_sample_size_threshold : The threshold for the minimum number of samples for a minor class
     shap_max_display : The maximum number of features to display in SHAP plots
     scoring : The scoring metrics to calculate
+    save_estimators : Whether to save the estimators
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -56,6 +57,7 @@ class Config(BaseModel):
     minor_class_sample_size_threshold: int = Field(gt=0)
     shap_max_display: int = Field(gt=0)
     scoring: list[str]
+    save_estimators: bool
 
     @field_validator("scoring")
     @classmethod
