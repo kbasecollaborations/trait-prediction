@@ -10,6 +10,12 @@ def data_path():
 
 
 @pytest.fixture
+def hydra_path():
+    data_path = Path("data")
+    return data_path
+
+
+@pytest.fixture
 def default_config_path(data_path):
-    config_path = data_path / "default.yml"
+    config_path = data_path / "configs/default.yaml"
     return config_path
