@@ -38,7 +38,7 @@ class TrainingData:
     sampling_type : str
         The type of sampling used.
     imbalance_sampling_type : str | None
-        The type of imbalanced sampling used.
+        The type of imbalance_correction sampling used.
     """
 
     X_train: pd.DataFrame
@@ -196,7 +196,7 @@ class Predictor:
         sampling_type: str,
         test_size: float = 0.3,
         stratify: bool = True,
-        imbalanced: str | None = None,
+        imbalance_correction: str | None = None,
     ) -> None:
         """
         Split the data into train and test sets using `train_test_split`.
@@ -211,8 +211,8 @@ class Predictor:
         stratify : bool
             Whether to stratify the data.
             Default value is True.
-        imbalanced : Optional[str], {'auto', 'undersample', 'oversample'}
-            Whether to use imbalanced data.
+        imbalance_correction : Optional[str], {'auto', 'undersample', 'oversample'}
+            Whether to perform imbalance correction.
             Default value is 'auto'.
 
         Returns
@@ -239,9 +239,9 @@ class Predictor:
                 )
             else:
                 raise ValueError("sampling_type must be 'random' or 'ooc'.")
-        if imbalanced is not None:
+        if imbalance_correction is not None:
             imbalanced_sampling_type, X_train, y_train = perform_imbalanced_sampling(
-                y, X_train, y_train, imbalanced, random_state
+                y, X_train, y_train, imbalance_correction, random_state
             )
         else:
             imbalanced_sampling_type = None
