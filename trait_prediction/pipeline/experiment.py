@@ -89,15 +89,13 @@ class ExperimentResult:
         return run_dir
 
     @classmethod
-    def initialize(
-        cls, existing_dirs: list[str], length: int = 12
-    ) -> "ExperimentResult":
+    def initialize(cls, base_dir: Path, length: int = 12) -> "ExperimentResult":
         """Initialize a new ExperimentResult.
 
         Parameters
         ----------
-        existing_dirs : list[str]
-            The list of existing directories.
+        base_dir : Path
+            The base directory.
         length : int
             The length of the run ID.
 
@@ -106,7 +104,8 @@ class ExperimentResult:
         "ExperimentResult"
             The ExperimentResult object.
         """
-        run_dir = Path(cls.generate_run_id(existing_dirs, length))
+        existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
+        run_dir = base_dir / cls.generate_run_id(existing_dirs, length)
         run_dir.mkdir(parents=True, exist_ok=True)
         return cls(run_dir)
 
@@ -321,15 +320,15 @@ class Experiment(Set[ExperimentResult]):
     @classmethod
     def initialize(
         cls,
-        existing_dirs: list[str],
+        base_dir: Path,
         sep: str,
     ) -> "Experiment":
         """Initialize a new Experiment.
 
         Parameters
         ----------
-        existing_dirs : list[str]
-            The list of existing directories.
+        base_dir : Path
+            The base directory.
         sep : str
             The separator between the left and right names.
 
@@ -338,15 +337,13 @@ class Experiment(Set[ExperimentResult]):
         "Experiment"
             The Experiment object.
         """
-        experiment_dir = Path(cls.generate_experiment_id(existing_dirs, sep))
+        existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
+        experiment_dir = base_dir / cls.generate_experiment_id(existing_dirs, sep)
         experiment_dir.mkdir(parents=True, exist_ok=True)
         return cls(experiment_dir)
 
     def create_result(self) -> ExperimentResult:
-        existing_dirs = [
-            dir.name for dir in self.experiment_dir.iterdir() if dir.is_dir()
-        ]
-        return ExperimentResult.initialize(existing_dirs)
+        return ExperimentResult.initialize(self.experiment_dir)
 
     def parse(self):
         """Parse the contents of the experiment directory."""

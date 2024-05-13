@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
-from tqdm import tqdm
 
 from ..logging import logger
 from ..main import DataSet, Feature, FeatureInput, Phenotype, PhenotypeInput
@@ -92,7 +91,7 @@ class PredictionPipeline:
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
-        self._initialize_experiment()
+        self.experiment = Experiment.initialize(self.output_dir, "_")
         log_file = self.experiment.experiment_dir / "experiment.log"
         logger.add(log_file, enqueue=True, mode="w")
         logger.info(f"Initialized experiment at {self.experiment.experiment_dir}")
@@ -102,11 +101,6 @@ class PredictionPipeline:
         logger.info("Loaded dataset")
         self._update_metadata()
         logger.info("Updated and logged metadata")
-
-    def _initialize_experiment(self) -> None:
-        """Initialize the experiment."""
-        existing_dirs = [d.name for d in self.output_dir.iterdir() if d.is_dir()]
-        self.experiment = Experiment.initialize(existing_dirs, "_")
 
     def _update_metadata(self) -> None:
         metadata = {
@@ -375,7 +369,7 @@ class PredictionPipeline:
             task.n_tasks = len(tasks)
         logger.info(f"Generated {len(tasks)} tasks")
         with mp.Pool(self.n_cpus) as pool:
-            results = pool.map(self._run_task, tasks)
+            pool.map(self._run_task, tasks)
         with progress.get_lock():
             progress.value = len(tasks)
         logger.info(
