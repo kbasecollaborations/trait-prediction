@@ -28,7 +28,8 @@ class Config(BaseModel):
     random_state: The random seed to use
     variance_threshold : The variance threshold to use for feature reduction
     correlation_threshold : The correlation threshold to use for feature reduction
-    imbalanced_sampling : The type of imbalanced sampling to use (oversample, undersample, auto, None)
+    sampling_type : The type of sampling to use for train-test split (random, ooc)
+    imbalance_correction : The type of imbalanced sampling to use (oversample, undersample, auto, None)
     test_size : The size of the test set
     cross_validation : Whether to perform cross-validation
     n_splits : The number of splits to use for cross-validation
@@ -46,18 +47,19 @@ class Config(BaseModel):
     random_state: int
     variance_threshold: float = Field(ge=0, le=1)
     correlation_threshold: float | None = Field(None, ge=0, le=1)
-    imbalanced_sampling: Literal["oversample", "undersample", "auto"] | None
+    sampling_type: Literal["random", "ooc"]
+    imbalance_correction: Literal["oversample", "undersample", "auto"] | None
     test_size: float = Field(gt=0, lt=1)
     cross_validation: bool
     n_splits: int = Field(gt=0)
     phenotype_sample_size_threshold: int = Field(gt=0)
     minor_class_sample_size_threshold: int = Field(gt=0)
     shap_max_display: int = Field(gt=0)
-    scoring_methods: list[str]
+    scoring: list[str]
 
-    @field_validator("scoring_methods")
+    @field_validator("scoring")
     @classmethod
-    def check_scoring_methods(cls, v: list[str]) -> list[str]:
+    def check_scoring(cls, v: list[str]) -> list[str]:
         scorer_names = get_scorer_names()
         if not all(method in scorer_names for method in v):
             raise ValueError("Invalid scoring method")

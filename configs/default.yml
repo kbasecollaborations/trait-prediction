@@ -6,14 +6,15 @@ n_feature_reduction: 1000
 random_state: 42
 variance_threshold: 0.01
 correlation_threshold: false
-imbalanced_sampling: false
+sampling_type: "random"
+imbalance_correction: false
 test_size: 0.3
 cross_validation: true
 n_splits: 5
 phenotype_sample_size_threshold: 20
 minor_class_sample_size_threshold: 10
 shap_max_display: 10
-scoring_methods:
+scoring:
   [
     "accuracy",
     "balanced_accuracy",
