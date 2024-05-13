@@ -24,7 +24,7 @@ from .feature_selection import (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class FeatureIndex:
     """Class that represents a feature index.
 
@@ -43,7 +43,7 @@ class FeatureIndex:
     dtype: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class FeatureInput:
     """Class that represents a feature input.
 

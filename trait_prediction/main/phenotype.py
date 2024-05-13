@@ -8,7 +8,7 @@ from typing import Callable
 import pandas as pd
 
 
-@dataclass
+@dataclass(frozen=True)
 class PhenotypeIndex:
     """Class that represents a phenotype index.
 
@@ -24,7 +24,7 @@ class PhenotypeIndex:
     category: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class PhenotypeInput:
     """Class that represents a phenotype input.
 
