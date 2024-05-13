@@ -24,4 +24,4 @@ scoring:
     "roc_auc",
     "matthews_corrcoef",
   ]
-save_estimators: false
+log_models: false
