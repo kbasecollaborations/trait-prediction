@@ -1,50 +1,151 @@
 """Module that defines the Pipeline class"""
 
-import gzip
-import json
-import pathlib
+import multiprocessing as mp
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
+from tqdm import tqdm
 
 from ..logging import logger
 from ..main import DataSet, Feature, FeatureInput, Phenotype, PhenotypeInput
-from ..training import Predictor, Score
-from ..visualization.feature_importances import plot_shap_summary
+from ..training import Predictor
 from .config import Config
+from .experiment import Experiment
+
+
+@dataclass
+class TaskData:
+    """The TaskData class defines the data for a task.
+
+    Attributes
+    ----------
+    phenotype : Phenotype
+        The phenotype data.
+    feature : Feature
+        The feature data.
+    experiment : Experiment
+        The experiment object.
+    config : Config
+        The configuration object.
+    make_classifier : Callable[[int, list[str] | None], Any]
+        The function to create a classifier.
+    output_dir : Path
+        The output directory.
+    random_state : int
+        The random state.
+    """
+
+    phenotype: Phenotype
+    feature: Feature
+    experiment: Experiment
+    config: Config
+    make_classifier: Callable[[int, list[str] | None], Any]
+    output_dir: Path
+    random_state: int
+
+    def get_metadata(self) -> dict:
+        """Get the metadata for the task.
+
+        Returns
+        -------
+        dict
+            Task metadata.
+        """
+        metadata = {
+            "phenotype": {
+                "name": self.phenotype.pindex.name,
+                "category": self.phenotype.pindex.category,
+            },
+            "feature": {
+                "name": self.feature.findex.name,
+                "ftype": self.feature.findex.ftype,
+                "dtype": self.feature.findex.dtype,
+            },
+            "experiment": self.experiment.experiment_dir,
+            "config": self.config.model_dump(),
+            "random_state": self.random_state,
+        }
+        return metadata
 
 
 class PredictionPipeline:
     def __init__(
         self,
-        config_path: pathlib.Path,
+        config_path: Path,
         pinputs: list[PhenotypeInput],
         finputs: list[FeatureInput],
         make_classifier: Callable[[int, list[str] | None], Any],
-        output_dir: pathlib.Path,
+        output_dir: Path,
         n_cpus: int,
+        random_state: int,
     ):
         self.config = Config.load_config(config_path)
         self.dataset = DataSet.read_data(pinputs, finputs)
         self.make_classifier = make_classifier
         self.output_dir = output_dir
         self.n_cpus = n_cpus
+        self.random_state = random_state
+        self._initialize_experiment()
+
+    def _initialize_experiment(self):
+        """Initialize the experiment."""
+        existing_dirs = [d.name for d in self.output_dir.iterdir() if d.is_dir()]
+        self.experiment = Experiment.initialize(existing_dirs, "_")
+        metadata = {
+            "config": self.config.model_dump(),
+            "n_cpus": self.n_cpus,
+            "random_state": self.random_state,
+            "phenotypes": [
+                {"name": p.pindex.name, "category": p.pindex.category}
+                for p in self.dataset.phenotype_set
+            ],
+            "features": [
+                {
+                    "name": f.findex.name,
+                    "ftype": f.findex.ftype,
+                    "dtype": f.findex.dtype,
+                }
+                for f in self.dataset.feature_set
+            ],
+        }
+        self.experiment.log_metadata(metadata)
 
     @staticmethod
-    def is_ydata_good(phenotype: Phenotype, config: Config) -> bool:
-        """Check if the phenotype data is good for training.
+    def is_xdata_good(feature_data: pd.DataFrame, config: Config) -> bool:
+        """Check if the feature data is good for training.
 
         Parameters
         ----------
-        phenotype : Phenotype
-            Phenotype object.
+        feature_data : pd.DataFrame
+            The data frame containing the feature data.
 
         Returns
         -------
         bool
             True if the data is good for training, otherwise False.
         """
-        phenotype_data = phenotype.phenotype_data
+        if feature_data.shape[0] <= config.phenotype_sample_size_threshold:
+            return False
+        if feature_data.shape[1] <= 1:
+            return False
+        return True
+
+    @staticmethod
+    def is_ydata_good(phenotype_data: pd.Series, config: Config) -> bool:
+        """Check if the phenotype data is good for training.
+
+        Parameters
+        ----------
+        phenotype_data : pd.Series
+            The series containing the phenotype data.
+
+        Returns
+        -------
+        bool
+            True if the data is good for training, otherwise False.
+        """
         # Skip if phenotype has only one class
         if len(phenotype_data.unique()) == 1:
             return False
@@ -58,235 +159,170 @@ class PredictionPipeline:
         return True
 
     @staticmethod
-    def preprocess_feature_data(feature: Feature, config: Config):
-        """Preprocess the data."""
-        feature_data = feature.feature_data
-        # Variance filtering
-        feature_data, low_var_features = feature.remove_features_with_low_variance(
-            feature_data, config.variance_threshold
-        )
-        # Correlation filtering
-        if config.correlation_threshold is not None:
-            feature_data, corr_group_dict = (
-                feature.remove_features_with_high_correlation(
-                    feature_data, config.correlation_threshold
-                )
-            )
-
-    @staticmethod
-    def select_features(feature: Feature, phenotype: Phenotype, config: Config):
-        feature_data = feature.feature_data
-        phenotype_data = phenotype.phenotype_data
-        if config.score_function is not None:
-            feature_data, low_score_features = feature.feature_selection_kbest(
-                feature_data, phenotype_data, config.score_function
-            )
-        if config.reduction_function is not None:
-            feature_data = feature.feature_dimensionality_reduction(
-                feature_data, config.reduction_function, config.n_feature_reduction
-            )
-
-    def run(self):
-        """Run the pipeline."""
-        for feature in self.dataset.feature_set:
-            self.preprocess_feature_data(feature, self.config)
-            for phenotype in self.dataset.phenotype_set:
-                if not self.is_ydata_good(phenotype, self.config):
-                    return None
-                self.select_features(feature, phenotype, self.config)
-
-    @staticmethod
-    def save_preprocessing_data(
-        output_dir: pathlib.Path,
-        low_var_features: list[str],
-        correlated_features_dict: dict[str, list[str]],
-        low_score_features: list[str],
-    ):
-        """Save the preprocessing data.
+    def preprocess_feature_data(
+        feature_data: pd.DataFrame, ftype: str, config: Config
+    ) -> tuple[pd.DataFrame, list[str], dict[str, list[str]]]:
+        """Preprocess the feature data.
 
         Parameters
         ----------
-        output_dir : pathlib.Path
-            The output directory.
-        low_var_features : list[str]
-            The features with low variance that were removed.
-        correlated_features_dict : dict[str, list[str]]
-            The features with high correlation that were removed.
-        low_score_features : list[str]
-            The features with low score_func score that were removed.
-        """
-        with open(output_dir / "low_var_features_list.txt", "w") as fid:
-            fid.write("\n".join(low_var_features))
-        with gzip.open(output_dir / "corr_features_map.json.gz", "wt") as gzfile:
-            json.dump(correlated_features_dict, gzfile)
-        with open(output_dir / "low_score_features_list.txt", "w") as fid:
-            fid.write("\n".join(low_score_features))
-
-    @staticmethod
-    def save_data(
-        output_dir: pathlib.Path,
-        predictor: Predictor,
-        score: Score,
-        save_estimators: bool = False,
-    ):
-        """Save the data (after training and scoring).
-
-        Parameters
-        ----------
-        output_dir : pathlib.Path
-            The output directory.
-        predictor : Predictor
-            The predictor object.
-        score : Score
-            The score object.
-        save_estimators : bool
-            Whether to save the estimators.
-        """
-        # save the training data
-        if predictor.training_data is None:
-            raise ValueError("Training data not set for the predictor")
-        predictor.training_data.save_indices(output_dir)
-        # save the cv data
-        if predictor.cv_data is None:
-            raise ValueError("CV data not set for the predictor")
-        predictor.cv_data.save_indices(predictor.phenotype, output_dir)
-        # save the scores
-        score.save_scores(output_dir)
-        # save estimators
-        if save_estimators:
-            score.save_estimators(output_dir)
-
-    @staticmethod
-    def save_visualizations(
-        output_dir: pathlib.Path, clf, X_train: pd.DataFrame, config: Config, title: str
-    ) -> None:
-        """Save the visualizations.
-
-        Parameters
-        ----------
-        clf
-            The classifier object.
-        output_dir : pathlib.Path
-            The output directory.
-        X_train : pd.DataFrame
-            The training data.
+        feature_data : pd.DataFrame
+            The data frame containing the feature data.
+        ftype : str
+            The type of the feature data.
         config : Config
             The configuration object.
-        title : str
-            The title of the plot (phenotype name).
-        """
-        # TODO: Make the file name variable if you want to save the shap plots for each CV
-        shap_summary_plot_file = str(output_dir / "shap_summary_plot.png")
-        importance_df = plot_shap_summary(
-            clf,
-            X_train,
-            config,
-            title=title,
-            output_file=shap_summary_plot_file,
-        )
-        importance_df.to_csv(output_dir / "shap_features.csv", index=True, sep=",")
-
-    # TODO: Create a run method
-
-    # TODO: Remove these and add them directly to the preprocess_data method
-    def filter_feature_data(
-        self,
-        variance_threshold: float | None = 0.05,
-        correlation_treshold: float | None = 0.95,
-        score_func: str | None = None,
-        n_features: int = 1000,
-        method: str = "numpy",
-    ) -> tuple[list[str], dict[str, list[str]], list[str]]:
-        if self._feature_data is not None:
-            if variance_threshold is not None:
-                fd_high_var, low_var_features = remove_features_with_low_variance(
-                    self._feature_data, variance_threshold
-                )
-            else:
-                fd_high_var = self._feature_data
-                low_var_features = []
-            if correlation_treshold is not None:
-                (
-                    fd_high_var_low_corr,
-                    corr_group_dict,
-                ) = remove_features_with_high_correlation(
-                    fd_high_var, correlation_treshold, method=method
-                )
-            else:
-                fd_high_var_low_corr = fd_high_var
-                corr_group_dict = {}
-            if score_func is not None:
-                fd_final, low_score_features = feature_selection_kbest(
-                    fd_high_var_low_corr, self.phenotype_data, score_func, n_features
-                )
-            else:
-                fd_final = fd_high_var_low_corr
-                low_score_features = []
-            self._feature_data = fd_final
-        else:
-            raise ValueError("Feature data not set for this phenotype")
-        return low_var_features, corr_group_dict, low_score_features
-
-    def reduce_feature_data(
-        self,
-        method: str,
-        n_components: int,
-        random_state: int | None = None,
-    ) -> pd.DataFrame:
-        """
-        Reduces the dimensionality of the feature data for this phenotype.
-
-        Parameters
-        ----------
-        method : str
-            Method to use for dimensionality reduction.
-            Supported methods are 'PCA' and 'NMF'
-        n_components : int
-            Number of components to reduce to.
-        random_state : int | None, optional
-            Random seed value, by default None
 
         Returns
         -------
-        components_df : pd.DataFrame
-            Pandas DataFrame containing the components of the dimensionality reduction.
-
-        Raises
-        ------
-        ValueError
-            If feature data is not set for this phenotype
+        tuple[pd.DataFrame, list[str], dict[str, list[str]]]
+            The preprocessed feature data, the features with low variance, and the correlated features.
         """
-        if self._feature_data is not None:
-            reduced_feature_df, components_df = feature_dimensionality_reduction(
-                self._feature_data, method, n_components, random_state=random_state
+        # Variance filtering
+        # TODO: Can we support multiple variance thresholds to avoid this if-else block?
+        if ftype == "binary":
+            feature_data, low_var_features = Feature.remove_features_with_low_variance(
+                feature_data, config.variance_threshold
             )
-            self._feature_data = reduced_feature_df
-            return components_df
         else:
-            raise ValueError("Feature data not set for this phenotype")
+            low_var_features = []
+        # Correlation filtering
+        if config.correlation_threshold is not None:
+            # TODO: Is it possible to avoid hardcoding the method here?
+            n_features = feature_data.shape[1]
+            if n_features <= 40_000:
+                corr_method = "numpy"
+            else:
+                corr_method = "numba"
+            feature_data, corr_group_dict = (
+                Feature.remove_features_with_high_correlation(
+                    feature_data, config.correlation_threshold, method=corr_method
+                )
+            )
+        else:
+            corr_group_dict = {}
+        return feature_data, low_var_features, corr_group_dict
 
-    def select_important_features(
-        self, feature_importances: np.ndarray, k: int
-    ) -> pd.DataFrame:
-        """
-        Selects the k most important features for this phenotype using feature_importances
+    @staticmethod
+    def select_features(
+        feature_data: pd.DataFrame, phenotype_data: pd.Series, config: Config
+    ) -> tuple[pd.DataFrame, list[str], pd.DataFrame | None]:
+        """Feature selection or reduction is applied to the feature data based on the config.
 
         Parameters
-        ---------
-        feature_importances : np.ndarray
-            Numpy array containing the feature importances
-        k : int
-            Number of features to select
+        ----------
+        feature_data : pd.DataFrame
+            The data frame containing the feature data.
+        phenotype_data : pd.Series
+            The series containing the phenotype data.
+        config : Config
+            The configuration object.
 
         Returns
-        ------
-        pd.DataFrame
-            Pandas DataFrame containing the selected features
+        -------
+        tuple[pd.DataFrame, list[str], pd.DataFrame | None]
+            The selected feature data, the low score features, and the components dataframe.
         """
-        feature_data = self.feature_data
-        importance_df = pd.DataFrame(
-            {"feature": feature_data.columns, "importance": feature_importances}
-        ).sort_values(by="importance", ascending=False)
-        selected_features = importance_df["feature"].tolist()[:k]
-        self._feature_data = feature_data[selected_features]
-        return self._feature_data
+        if config.score_function is not None:
+            feature_data, low_score_features = Feature.feature_selection_kbest(
+                feature_data, phenotype_data, config.score_function
+            )
+            components_df = None
+        elif config.reduction_function is not None:
+            feature_data, components_df = Feature.feature_dimensionality_reduction(
+                feature_data, config.reduction_function, config.n_feature_reduction
+            )
+            low_score_features = []
+        else:
+            raise ValueError("No feature selection or reduction method specified")
+        return feature_data, low_score_features, components_df
+
+    @staticmethod
+    def _run_task(task_data: TaskData):
+        phenotype = task_data.phenotype
+        feature = task_data.feature
+        config = task_data.config
+        experiment = task_data.experiment
+        make_classifier = task_data.make_classifier
+        random_state = task_data.random_state
+        experiment_result = experiment.create_result()
+        metadata = task_data.get_metadata()
+        # Log the metadata
+        experiment_result.log_metadata(metadata)
+        ftype = feature.findex.ftype
+        feature_data = feature.feature_data
+        phenotype_data = phenotype.phenotype_data
+        # Check if the data is good for training
+        if not PredictionPipeline.is_xdata_good(feature_data, config):
+            return None
+        if not PredictionPipeline.is_ydata_good(phenotype_data, config):
+            return None
+        # Preprocess the feature data
+        feature_data, low_var_features, corr_group_dict = (
+            PredictionPipeline.preprocess_feature_data(feature_data, ftype, config)
+        )
+        # Select features
+        feature_data, low_score_features, components_df = (
+            PredictionPipeline.select_features(feature_data, phenotype_data, config)
+        )
+        phenotype_train = Phenotype(phenotype_data, phenotype.pindex)
+        feature_train = Feature(feature_data, feature.findex)
+        # Log the preprocessing data
+        experiment_result.log_preprocessing_data(
+            low_var_features, corr_group_dict, low_score_features
+        )
+        # Create the predictor
+        if ftype == "binary":
+            categorical_feature_names = []
+            for col in phenotype_data.columns:
+                if str(phenotype_data[col].dtype).startswith("uint"):
+                    categorical_feature_names.append(col)
+        else:
+            categorical_feature_names = None
+        classifier = make_classifier(random_state, categorical_feature_names)
+        predictor = Predictor(phenotype_train, feature_train, classifier, random_state)
+        # Split the data into training and testing sets
+        if config.cross_validation:
+            predictor.split_data_cv(n_splits=config.n_splits, stratify=True)
+            score = predictor.get_score(kind="CV", n_jobs=1, scoring=config.scoring)
+        else:
+            predictor.split_data(
+                sampling_type=config.sampling_type,
+                test_size=config.test_size,
+                imbalance_correction=config.imbalance_correction,
+                stratify=True,
+            )
+            score = predictor.get_score(kind="test", n_jobs=1, scoring=config.scoring)
+        # Log the training data
+        experiment_result.log_data(predictor)
+        # Log the metrics
+        experiment_result.log_metrics(score)
+        # Log the models
+        if config.log_models:
+            experiment_result.log_models(score)
+        # Log the plots
+        experiment_result.log_plots(score, feature_data, config)
+
+    def run(self):
+        """Run the pipeline."""
+        tasks: list[TaskData] = []
+        for feature_raw in self.dataset.feature_set:
+            for phenotype_raw in self.dataset.phenotype_set:
+                phenotype, feature = self.dataset.get_data(
+                    phenotype_raw.pindex, feature_raw.findex
+                )
+                task = TaskData(
+                    phenotype=phenotype,
+                    feature=feature,
+                    experiment=self.experiment,
+                    config=self.config,
+                    make_classifier=self.make_classifier,
+                    output_dir=self.output_dir,
+                    random_state=self.random_state,
+                )
+                tasks.append(task)
+        with mp.Pool(self.n_cpus) as pool:
+            results = []
+            # TODO: Replace tqdm with mp.Value & logger to track progress
+            for result in tqdm(pool.imap(self._run_task, tasks), total=len(tasks)):
+                results.append(result)
