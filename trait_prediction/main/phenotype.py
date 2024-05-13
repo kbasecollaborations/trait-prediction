@@ -123,7 +123,8 @@ class Phenotype:
         if raw_phenotype_df.shape[1] > 1:
             raise ValueError("The Phenotype table can only contain one phenotype")
         phenotype_data = raw_phenotype_df.iloc[:, 0]
-        phenotype_data.index = phenotype_data.index.apply(index_format_func)
+        pd_index = pd.Series(phenotype_data.index)
+        phenotype_data.index = pd_index.apply(index_format_func)
         return Phenotype(phenotype_data, pinput.pindex)
 
     def save(self, file_path: str | pathlib.Path) -> None:
