@@ -41,9 +41,9 @@ class Config(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
-    score_function: Literal["f_classif", "chi2", "mutual_info_classif"]
+    score_function: Literal["f_classif", "chi2", "mutual_info_classif"] | None
     n_feature_selection: int = Field(gt=0)
-    reduction_function: Literal["PCA", "NMF"]
+    reduction_function: Literal["PCA", "NMF"] | None
     n_feature_reduction: int = Field(gt=0)
     random_state: int
     variance_threshold: float = Field(ge=0, le=1)
