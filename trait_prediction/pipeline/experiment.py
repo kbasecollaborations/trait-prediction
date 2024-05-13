@@ -1,12 +1,18 @@
 """Module that defines the Experiment class"""
 
+import gzip
 import json
 import random
 from collections.abc import Set
 from dataclasses import dataclass
 from pathlib import Path
 
+import pandas as pd
 import yaml
+
+from ..training import Predictor, Score
+from ..visualization.feature_importances import plot_shap_summary
+from .config import Config
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 NAMES = json.loads((DATA_DIR / "names.json").read_text())
@@ -133,22 +139,103 @@ class ExperimentResult:
         }
         self.files = files
 
-    def log_metadata(self):
+    def log_metadata(self, metadata: dict) -> None:
         """Log the metadata to a file."""
+        self.metadata = metadata
         with open(self.run_dir / "metadata.yaml", "w") as fid:
             yaml.safe_dump(self.metadata, fid)
 
-    def log_data(self):
-        pass
+    def log_preprocessing_data(
+        self,
+        low_var_features: list[str],
+        correlated_features_dict: dict[str, list[str]],
+        low_score_features: list[str],
+    ) -> None:
+        """Log the preprocessing data.
 
-    def log_metric(self):
-        pass
+        Parameters
+        ----------
+        low_var_features : list[str]
+            The features with low variance that were removed.
+        correlated_features_dict : dict[str, list[str]]
+            The features with high correlation that were removed.
+        low_score_features : list[str]
+            The features with low score_func score that were removed.
+        """
+        output_dir = self.run_dir / "data"
+        with open(output_dir / "low_var_features_list.txt", "w") as fid:
+            fid.write("\n".join(low_var_features))
+        with gzip.open(output_dir / "corr_features_map.json.gz", "wt") as gzfile:
+            json.dump(correlated_features_dict, gzfile)
+        with open(output_dir / "low_score_features_list.txt", "w") as fid:
+            fid.write("\n".join(low_score_features))
 
-    def log_plot(self):
-        pass
+    def log_data(self, predictor: Predictor) -> None:
+        """Log the training data.
 
-    def log_model(self):
-        pass
+        Parameters
+        ----------
+        predictor : Predictor
+            The predictor object.
+        """
+        output_dir = self.run_dir / "data"
+        # save the training data
+        if predictor.training_data is not None:
+            predictor.training_data.save_indices(output_dir)
+        # save the cv data
+        if predictor.cv_data is not None:
+            predictor.cv_data.save_indices(predictor.phenotype, output_dir)
+        raise ValueError("Neither Training data nor CV data set for the predictor")
+
+    def log_metrics(self, score: Score) -> None:
+        """Save the metrics.
+
+        Parameters
+        ----------
+        score : Score
+            The score object.
+        """
+        output_dir = self.run_dir / "metrics"
+        score.save_scores(output_dir)
+
+    def log_models(self, score: Score) -> None:
+        """Save the models.
+
+        Parameters
+        ----------
+        score : Score
+            The score object.
+        """
+        output_dir = self.run_dir / "models"
+        score.save_estimators(output_dir)
+
+    def log_plots(self, score: Score, X: pd.DataFrame, config: Config) -> None:
+        """Save the visualizations.
+
+        Parameters
+        ----------
+        score : Score
+            The score object.
+        X : pd.DataFrame
+            The entire X data.
+        config : Config
+            The configuration object.
+        """
+        output_dir = self.run_dir / "plots"
+        for i, classifier in enumerate(score.estimators):
+            shap_summary_plot_file = str(output_dir / f"shap_summary_plot_{i}.png")
+            shap_features_file = str(output_dir / f"shap_features_{i}.csv")
+            fname = score.findex.name
+            pname = score.pindex.name
+            title = f"F={fname}, P={pname}"
+            importance_df = plot_shap_summary(
+                classifier,
+                X,
+                config,
+                title=title,
+                output_file=shap_summary_plot_file,
+            )
+            importance_df.to_csv(shap_features_file, index=True, sep=",")
 
 
 # TODO: Create a class ExperimentSet that contains multiple Experiment objects
@@ -242,7 +329,8 @@ class Experiment(Set[ExperimentResult]):
             run_result.parse()
             self._results.add(run_result)
 
-    def log_metadata(self):
+    def log_metadata(self, metadata: dict) -> None:
         """Log the metadata to a file."""
+        self.metadata = metadata
         with open(self.experiment_dir / "metadata.yaml", "w") as fid:
             yaml.safe_dump(self.metadata, fid)
