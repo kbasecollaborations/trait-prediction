@@ -88,6 +88,14 @@ def leaf_dataset(leaf_phenotype_pinputs, leaf_feature_finputs):
 
 
 @pytest.fixture
+def leaf_dataset_data(leaf_dataset):
+    dataset = leaf_dataset
+    pindex = random.choice([p.pindex for p in dataset.phenotypes])
+    findex = random.choice([f.findex for f in dataset.features])
+    return dataset.get_data(pindex, findex)
+
+
+@pytest.fixture
 def leaf_feature_finputs(leaf_feature_folder):
     finputs = []
     for feature_file in leaf_feature_folder.iterdir():

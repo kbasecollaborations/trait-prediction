@@ -61,11 +61,9 @@ def test_feature_correlation(method, leaf_feature):
     assert new_feature_data.shape[1] < feature.feature_data.shape[1]
 
 
-# FIXME: Use dataset to test this
 @pytest.mark.parametrize("score_func", ["f_classif", "chi2", "mutual_info_classif"])
-def test_feature_kbest(score_func, leaf_phenotype, leaf_feature):
-    feature = leaf_feature
-    phenotype = leaf_phenotype
+def test_feature_kbest(score_func, leaf_dataset_data):
+    phenotype, feature = leaf_dataset_data
     new_feature_data, low_score_features = Feature.feature_selection_kbest(
         feature.feature_data,
         phenotype.phenotype_data,
@@ -76,5 +74,13 @@ def test_feature_kbest(score_func, leaf_phenotype, leaf_feature):
     assert new_feature_data.shape[1] == 5
 
 
-def test_feature_dimreduction():
-    pass
+@pytest.mark.filterwarnings("ignore")
+@pytest.mark.parametrize("method", ["PCA", "NMF"])
+def test_feature_dimreduction(method, leaf_feature):
+    feature = leaf_feature
+    new_feature_data, components_df = Feature.feature_dimensionality_reduction(
+        feature.feature_data, method=method, n_components=5
+    )
+    assert new_feature_data.shape[1] == 5
+    assert components_df.shape[0] == 5
+    assert components_df.shape[1] == feature.feature_data.shape[1]
