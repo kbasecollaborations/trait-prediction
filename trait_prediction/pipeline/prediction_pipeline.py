@@ -34,8 +34,6 @@ class TaskData:
         The output directory.
     random_state : int
         The random state.
-    progress : mp.Value
-        The progress value.
     n_tasks : int
         The number of tasks.
     """
@@ -47,7 +45,6 @@ class TaskData:
     make_classifier: Callable[[int, list[str] | None], Any]
     output_dir: Path
     random_state: int
-    progress: mp.Value  # type: ignore
     n_tasks: int = 0
 
     def get_metadata(self) -> dict:
@@ -68,7 +65,7 @@ class TaskData:
                 "ftype": self.feature.findex.ftype,
                 "dtype": self.feature.findex.dtype,
             },
-            "experiment": self.experiment.experiment_dir,
+            "experiment": str(self.experiment.experiment_dir),
             "config": self.config.model_dump(),
             "random_state": self.random_state,
         }
@@ -248,7 +245,7 @@ class PredictionPipeline:
         return feature_data, low_score_features, components_df
 
     @staticmethod
-    def _run_task(task_data: TaskData):
+    def _run_task(task_data: TaskData, progress, lock):
         """Run the task.
 
         Parameters
@@ -304,8 +301,8 @@ class PredictionPipeline:
         # Create the predictor
         if ftype == "binary":
             categorical_feature_names = []
-            for col in phenotype_data.columns:
-                if str(phenotype_data[col].dtype).startswith("uint"):
+            for col in feature_data.columns:
+                if str(feature_data[col].dtype).startswith("uint"):
                     categorical_feature_names.append(col)
         else:
             categorical_feature_names = None
@@ -338,17 +335,20 @@ class PredictionPipeline:
         # Log the plots
         experiment_result.log_plots(score, feature_data, config)
         task_logger.info("Plots logged")
-        with task_data.progress.get_lock():
-            task_data.progress.value += 1
+        lock.acquire()
+        progress.value += 1
         task_logger.info(
-            f"Completed task. Progress: {task_data.progress.value} of {task_data.n_tasks}"
+            f"Completed task. Progress: {progress.value} of {task_data.n_tasks}"
         )
+        lock.release()
 
     def run(self):
         """Run the pipeline."""
-        tasks: list[TaskData] = []
+        tasks = []
         logger.info("Running the pipeline")
-        progress = mp.Value("i", 0)
+        manager = mp.Manager()
+        progress = manager.Value("i", 0)
+        lock = manager.Lock()
         for feature_raw in self.dataset.feature_set:
             for phenotype_raw in self.dataset.phenotype_set:
                 phenotype, feature = self.dataset.get_data(
@@ -362,16 +362,13 @@ class PredictionPipeline:
                     make_classifier=self.make_classifier,
                     output_dir=self.output_dir,
                     random_state=self.random_state,
-                    progress=progress,
                 )
                 tasks.append(task)
         for task in tasks:
             task.n_tasks = len(tasks)
         logger.info(f"Generated {len(tasks)} tasks")
         with mp.Pool(self.n_cpus) as pool:
-            pool.map(self._run_task, tasks)
-        with progress.get_lock():
-            progress.value = len(tasks)
+            pool.starmap(self._run_task, [(task, progress, lock) for task in tasks])
         logger.info(
-            "Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
+            f"Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
         )
