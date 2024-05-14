@@ -171,6 +171,7 @@ class ExperimentResult:
             The features dataframe.
         """
         output_dir = self.run_dir / "data"
+        output_dir.mkdir(parents=True, exist_ok=True)
         with open(output_dir / "low_var_features_list.txt", "w") as fid:
             fid.write("\n".join(low_var_features))
         with gzip.open(output_dir / "corr_features_map.json.gz", "wt") as gzfile:
@@ -192,13 +193,18 @@ class ExperimentResult:
             The predictor object.
         """
         output_dir = self.run_dir / "data"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        saved_data = False
         # save the training data
         if predictor.training_data is not None:
             predictor.training_data.save_indices(output_dir)
+            saved_data = True
         # save the cv data
         if predictor.cv_data is not None:
             predictor.cv_data.save_indices(predictor.phenotype, output_dir)
-        raise ValueError("Neither Training data nor CV data set for the predictor")
+            saved_data = True
+        if saved_data is False:
+            raise ValueError("Neither Training data nor CV data set for the predictor")
 
     def log_metrics(self, score: Score) -> None:
         """Save the metrics.
@@ -209,6 +215,7 @@ class ExperimentResult:
             The score object.
         """
         output_dir = self.run_dir / "metrics"
+        output_dir.mkdir(parents=True, exist_ok=True)
         score.save_scores(output_dir)
 
     def log_models(self, score: Score) -> None:
@@ -220,6 +227,7 @@ class ExperimentResult:
             The score object.
         """
         output_dir = self.run_dir / "models"
+        output_dir.mkdir(parents=True, exist_ok=True)
         score.save_estimators(output_dir)
 
     def log_plots(self, score: Score, X: pd.DataFrame, config: Config) -> None:
@@ -235,6 +243,7 @@ class ExperimentResult:
             The configuration object.
         """
         output_dir = self.run_dir / "plots"
+        output_dir.mkdir(parents=True, exist_ok=True)
         for i, classifier in enumerate(score.estimators):
             shap_summary_plot_file = str(output_dir / f"shap_summary_plot_{i}.png")
             shap_features_file = str(output_dir / f"shap_features_{i}.csv")
