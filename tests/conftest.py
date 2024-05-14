@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from trait_prediction.main import (
+    DataSet,
     FeatureIndex,
     FeatureInput,
     FeatureSet,
@@ -81,6 +82,11 @@ def leaf_feature_set(leaf_feature_finputs):
 
 
 @pytest.fixture
+def leaf_dataset(leaf_phenotype_pinputs, leaf_feature_finputs):
+    dataset = DataSet.read_data(leaf_phenotype_pinputs, leaf_feature_finputs)
+    return dataset
+
+
 @pytest.fixture
 def leaf_feature_finputs(leaf_feature_folder):
     finputs = []
