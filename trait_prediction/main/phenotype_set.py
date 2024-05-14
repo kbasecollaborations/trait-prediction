@@ -83,15 +83,12 @@ class PhenotypeSet(Set[Phenotype]):
             phenotypes.append(Phenotype.read_data(pinput))
         return cls(phenotypes)
 
-    @classmethod
-    def limit(cls, phenotype_set: "PhenotypeSet", limit: int) -> "PhenotypeSet":
+    def limit(self, limit: int) -> "PhenotypeSet":
         """
         Create a new PhenotypeSet object with a limited number of phenotypes.
 
         Parameters
         ---------
-        phenotype_set : "PhenotypeSet"
-            The PhenotypeSet object to limit
         limit : int
             The number of phenotypes to limit to
 
@@ -100,5 +97,5 @@ class PhenotypeSet(Set[Phenotype]):
         "PhenotypeSet"
             The PhenotypeSet object with limited number of phenotypes
         """
-        limited_phenotypes = list(islice(phenotype_set.phenotypes, limit))
-        return cls(limited_phenotypes)
+        limited_phenotypes = list(islice(self.phenotypes, limit))
+        return PhenotypeSet(limited_phenotypes)
