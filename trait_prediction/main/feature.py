@@ -161,9 +161,9 @@ class Feature:
             use_pyarrow=False,
         ).to_pandas()
         feature_df[id_col] = feature_df[id_col].apply(index_format_func)
+        feature_df = feature_df.set_index(id_col).fillna(0).astype(final_dtype)
         if ftype == "binary":
             feature_df[feature_df > 0] = 1
-        feature_df = feature_df.set_index(header[0]).fillna(0).astype(final_dtype)
         feature_df.index.name = "genomeID"
         return cls(feature_df, finput.findex)
 
