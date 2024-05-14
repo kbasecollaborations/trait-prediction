@@ -32,3 +32,9 @@ def test_phenotypeset_get_phenotype(leaf_phenotype_pinputs):
     pindex = PhenotypeIndex(name="histidine", category="leaf")
     phenotype = phenotype_set.get_phenotype(pindex)
     assert phenotype.pindex.name == "histidine"
+
+
+def test_phenotypeset_limit(leaf_phenotype_pinputs):
+    phenotype_set = PhenotypeSet.read_data(leaf_phenotype_pinputs)
+    new_phenotype_set = phenotype_set.limit(2)
+    assert len(new_phenotype_set) == 2
