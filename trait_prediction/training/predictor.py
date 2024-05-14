@@ -37,7 +37,7 @@ class TrainingData:
         Whether the data was stratified.
     sampling_type : str
         The type of sampling used.
-    imbalance_sampling_type : str | None
+    imbalance_correction : str | None
         The type of imbalance_correction sampling used.
     """
 
@@ -48,7 +48,7 @@ class TrainingData:
     test_size: float
     stratified: bool
     sampling_type: str
-    imbalanced_sampling_type: str | None
+    imbalance_correction: str | None
 
     def save_indices(self, folder: str | pathlib.Path) -> None:
         """Save the training and testing indices to a folder.
@@ -240,11 +240,9 @@ class Predictor:
             else:
                 raise ValueError("sampling_type must be 'random' or 'ooc'.")
         if imbalance_correction is not None:
-            imbalanced_sampling_type, X_train, y_train = perform_imbalanced_sampling(
+            imbalance_correction, X_train, y_train = perform_imbalanced_sampling(
                 y, X_train, y_train, imbalance_correction, random_state
             )
-        else:
-            imbalanced_sampling_type = None
         self.training_data = TrainingData(
             X_train=X_train,
             X_test=X_test,
@@ -253,7 +251,7 @@ class Predictor:
             test_size=test_size,
             stratified=stratify,
             sampling_type=sampling_type,
-            imbalanced_sampling_type=imbalanced_sampling_type,
+            imbalance_correction=imbalance_correction,
         )
 
     def split_data_cv(self, n_splits: int, stratify: bool = True) -> None:
