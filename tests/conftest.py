@@ -2,6 +2,7 @@ import random
 from pathlib import Path
 
 import pytest
+from catboost import CatBoostClassifier
 
 from trait_prediction.main import (
     DataSet,
@@ -12,15 +13,16 @@ from trait_prediction.main import (
     PhenotypeInput,
     PhenotypeSet,
 )
+from trait_prediction.training import Predictor
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def data_path():
     data_path = Path("tests/data")
     return data_path
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def hydra_path():
     data_path = Path("data")
     return data_path
@@ -65,7 +67,7 @@ def leaf_phenotype(leaf_phenotype_pinputs):
     return random.choice(list(phenotype_set.phenotypes))
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def leaf_phenotype_set(leaf_phenotype_pinputs):
     return PhenotypeSet.read_data(leaf_phenotype_pinputs)
 
@@ -76,12 +78,12 @@ def leaf_feature(leaf_feature_finputs):
     return random.choice(list(feature_set.features))
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def leaf_feature_set(leaf_feature_finputs):
     return FeatureSet.read_data(leaf_feature_finputs)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def leaf_dataset(leaf_phenotype_pinputs, leaf_feature_finputs):
     dataset = DataSet.read_data(leaf_phenotype_pinputs, leaf_feature_finputs)
     return dataset
@@ -109,3 +111,22 @@ def leaf_feature_finputs(leaf_feature_folder):
         )
         finputs.append(finput)
     return finputs
+
+
+@pytest.fixture
+def random_state():
+    return 42
+
+
+@pytest.fixture(scope="function")
+def leaf_predictor(leaf_dataset_data, random_state):
+    phenotype, feature = leaf_dataset_data
+    classifier = CatBoostClassifier(
+        random_state=random_state,
+        objective="Logloss",
+        verbose=False,
+        allow_writing_files=False,
+        thread_count=1,
+    )
+    predictor = Predictor(phenotype, feature, classifier, random_state=random_state)
+    return predictor
