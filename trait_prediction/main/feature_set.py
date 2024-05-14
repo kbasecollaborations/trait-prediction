@@ -36,6 +36,9 @@ class FeatureSet(Set[Feature]):
     def __iter__(self) -> Iterator[Feature]:
         return iter(self._feature_dict.values())
 
+    def __contains__(self, feature: Feature) -> bool:  # type: ignore
+        return feature.findex in self._feature_dict
+
     def get_feature(self, findex: FeatureIndex) -> Feature:
         """
         Returns the Feature object with the given name, ftype and dtype.
