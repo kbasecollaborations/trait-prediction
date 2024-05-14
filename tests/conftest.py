@@ -13,6 +13,7 @@ from trait_prediction.main import (
     PhenotypeInput,
     PhenotypeSet,
 )
+from trait_prediction.pipeline import PredictionPipeline
 from trait_prediction.training import Predictor
 
 
@@ -130,3 +131,34 @@ def leaf_predictor(leaf_dataset_data, random_state):
     )
     predictor = Predictor(phenotype, feature, classifier, random_state=random_state)
     return predictor
+
+
+def make_classifier(random_state, categorical_feature_names):
+    classifier = CatBoostClassifier(
+        random_state=random_state,
+        objective="Logloss",
+        verbose=False,
+        cat_features=categorical_feature_names,
+        allow_writing_files=False,
+        thread_count=1,
+    )
+    return classifier
+
+
+@pytest.fixture(scope="function")
+def leaf_pipeline(
+    default_config_path,
+    leaf_phenotype_pinputs,
+    leaf_feature_finputs,
+    tmp_path,
+    random_state,
+):
+    config_path = default_config_path / "default.yaml"
+    pinputs = leaf_phenotype_pinputs
+    finputs = leaf_feature_finputs
+    output_dir = tmp_path
+    n_cpus = 2
+    pipeline = PredictionPipeline(
+        config_path, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
+    )
+    return pipeline
