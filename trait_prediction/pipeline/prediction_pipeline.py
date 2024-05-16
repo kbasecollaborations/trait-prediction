@@ -1,6 +1,7 @@
 """Module that defines the Pipeline class"""
 
 import multiprocessing as mp
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -12,6 +13,10 @@ from ..main import DataSet, Feature, FeatureInput, Phenotype, PhenotypeInput
 from ..training import Predictor
 from .config import Config
 from .experiment import Experiment
+
+logger.remove()
+logger_extra = logger.bind(experiment="main", run="main", file=True)
+logger_std = logger.bind(experiment="main", run="main", stdout=True)
 
 
 @dataclass
@@ -30,7 +35,6 @@ class TaskData:
         The configuration object.
     make_classifier : Callable[[int, list[str] | None], Any]
         The function to create a classifier.
-    output_dir : Path
         The output directory.
     random_state : int
         The random state.
@@ -83,21 +87,40 @@ class PredictionPipeline:
         n_cpus: int,
         random_state: int,
     ):
-        logger.enable("trait_prediction")
+        logger_extra.enable("trait_prediction")
         self.make_classifier = make_classifier
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
         self.experiment = Experiment.initialize(self.output_dir, "_")
         log_file = self.experiment.experiment_dir / "experiment.log"
-        logger.add(log_file, enqueue=True, mode="w")
-        logger.info(f"Initialized experiment at {self.experiment.experiment_dir}")
+        logger_extra.add(
+            log_file,
+            enqueue=True,
+            filter=lambda record: "file" in record["extra"],
+            mode="w",
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | Experiment:{extra[experiment]}, Run:{extra[run]} - {message}",
+        )
+        logger_std.add(
+            sys.stdout,
+            enqueue=True,
+            filter=lambda record: "stdout" in record["extra"],
+            colorize=True,
+            diagnose=True,
+            backtrace=True,
+            format=(
+                "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | "
+                "<yellow>Experiment:{extra[experiment]}, Run:{extra[run]}</yellow> - {message}"
+            ),
+        )
+        logger_extra.info(f"Initialized experiment at {self.experiment.experiment_dir}")
         self.config = Config.load_config(config_path)
-        logger.info(f"Loaded configuration from {config_path}")
+        logger_extra.info(f"Loaded configuration from {config_path}")
         self.dataset = DataSet.read_data(pinputs, finputs)
-        logger.info("Loaded dataset")
+        logger_extra.info("Loaded dataset")
         self._update_metadata()
-        logger.info("Updated and logged metadata")
+        logger_extra.info("Updated and logged metadata")
+        logger_std.info(f"Pipeline initialized at {self.experiment.experiment_dir}")
 
     def _update_metadata(self) -> None:
         metadata = {
@@ -255,9 +278,15 @@ class PredictionPipeline:
         """
         experiment = task_data.experiment
         experiment_result = experiment.create_result()
-        task_logger = logger.bind(worker_id=mp.current_process().name)
-        log_file = experiment_result.run_dir / "task.log"
-        task_logger.add(log_file, enqueue=True, mode="w")
+        # FIXME: Does not work as intended
+        task_logger = logger_extra.bind(
+            experiment=experiment.experiment_dir.name,
+            run=experiment_result.run_dir.name,
+        )
+        task_logger_std = logger_std.bind(
+            experiment=experiment.experiment_dir.name,
+            run=experiment_result.run_dir.name,
+        )
         phenotype = task_data.phenotype
         feature = task_data.feature
         config = task_data.config
@@ -340,12 +369,16 @@ class PredictionPipeline:
         task_logger.info(
             f"Completed task. Progress: {progress.value} of {task_data.n_tasks}"
         )
+        task_logger_std.info(
+            f"Completed task. Progress: {progress.value} of {task_data.n_tasks}",
+            extra={},
+        )
         lock.release()
 
     def run(self):
         """Run the pipeline."""
         tasks = []
-        logger.info("Running the pipeline")
+        logger_extra.info("Running the pipeline")
         manager = mp.Manager()
         progress = manager.Value("i", 0)
         lock = manager.Lock()
@@ -366,9 +399,10 @@ class PredictionPipeline:
                 tasks.append(task)
         for task in tasks:
             task.n_tasks = len(tasks)
-        logger.info(f"Generated {len(tasks)} tasks")
+        logger_extra.info(f"Generated {len(tasks)} tasks")
+        logger_std.info(f"Generated {len(tasks)} tasks")
         with mp.Pool(self.n_cpus) as pool:
             pool.starmap(self._run_task, [(task, progress, lock) for task in tasks])
-        logger.info(
+        logger_extra.info(
             f"Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
         )
