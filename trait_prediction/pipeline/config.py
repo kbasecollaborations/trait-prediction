@@ -1,6 +1,7 @@
 """Module that defines the Config class"""
 
 from collections.abc import Set
+from itertools import product
 from pathlib import Path
 from typing import Iterable, Literal
 
@@ -125,3 +126,73 @@ class Config(BaseModel):
         except ValidationError as e:
             raise e
         return verified_config
+
+
+class ConfigSet(Set[Config]):
+    def __init__(self, configs: Iterable[Config]) -> None:
+        self.configs = set(configs)
+
+    @classmethod
+    def create_configset(
+        cls, base_config_path: Path, config_set_path: Path
+    ) -> "ConfigSet":
+        """Create a configuration set base config and a config_set
+
+        Parameters
+        ----------
+        base_config_path : Path
+            The path to the base configuration file
+        config_set_path : Path
+            The path to the configuration set file
+
+        Returns
+        -------
+        "ConfigSet"
+            The configuration set object
+        """
+        configs = set()
+        with open(base_config_path, "r") as file:
+            config = yaml.safe_load(file)
+        try:
+            Config(**config)
+        except ValidationError as e:
+            raise e
+        with open(config_set_path, "r") as file:
+            config_set = yaml.safe_load(file)
+        keys, values = zip(*config_set.items())
+        new_config_dicts = [
+            dict(zip(keys, combination)) for combination in product(*values)
+        ]
+        for new_config_dict in new_config_dicts:
+            updated_config = {**config, **new_config_dict}
+            try:
+                verified_config = Config(**updated_config)
+            except ValidationError as e:
+                raise e
+            configs.add(verified_config)
+        return cls(configs)
+
+    @classmethod
+    def load_configs(cls, config_paths: Iterable[Path]) -> "ConfigSet":
+        """Load the configuration set from a list of files.
+
+        Parameters
+        ----------
+        config_paths : Iterable[Path]
+            An iterable of paths to the configuration files
+
+        Returns
+        -------
+        "ConfigSet"
+            The configuration set object
+        """
+        configs = set()
+        for config_path in config_paths:
+            with open(config_path, "r") as file:
+                config = yaml.safe_load(file)
+            try:
+                verified_config = cls(**config)
+            except ValidationError as e:
+                raise e
+            configs.add(verified_config)
+        return cls(configs)
