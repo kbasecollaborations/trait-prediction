@@ -260,7 +260,7 @@ class PredictionPipeline:
             components_df = None
         elif config.reduction_function is not None:
             feature_data, components_df = Feature.feature_dimensionality_reduction(
-                feature_data, config.reduction_function, config.n_feature_reduction
+                feature_data, config.reduction_function, config.n_feature_selection
             )
             low_score_features = []
         else:

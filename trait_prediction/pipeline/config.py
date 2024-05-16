@@ -1,7 +1,8 @@
 """Module that defines the Config class"""
 
-import pathlib
-from typing import Literal
+from collections.abc import Set
+from pathlib import Path
+from typing import Iterable, Literal
 
 import yaml
 from pydantic import (
@@ -15,16 +16,22 @@ from pydantic import (
 from sklearn.metrics import get_scorer_names
 from typing_extensions import Self
 
+SelectionFunctionOpts = Literal[
+    "score:f_classif",
+    "score:chi2",
+    "score:mutual_info_classif",
+    "reduction:PCA",
+    "reduction:NMF",
+]
+
 
 class Config(BaseModel):
     """The Config class defines the configuration for the pipeline.
 
     Attributes
     ----------
-    score_function : The scoring function for feature selection. One of 'f_classif', 'chi2', 'mutual_info_classif'
+    selection_function : The function to use for feature selection
     n_feature_selection : The number of features to select
-    reduction_function : The reduction function for feature dimensionality reduction. One of 'PCA', 'NMF'
-    n_feature_reduction : The number of features to reduce to
     random_state: The random seed to use
     variance_threshold : The variance threshold to use for feature reduction
     correlation_threshold : The correlation threshold to use for feature reduction
@@ -38,13 +45,13 @@ class Config(BaseModel):
     shap_max_display : The maximum number of features to display in SHAP plots
     scoring : The scoring metrics to calculate
     log_models : Whether to save the estimators
+    score_function : The scoring function for feature selection. One of 'f_classif', 'chi2', 'mutual_info_classif'
+    reduction_function : The reduction function for feature dimensionality reduction. One of 'PCA', 'NMF'
     """
 
     model_config = ConfigDict(extra="forbid")
-    score_function: Literal["f_classif", "chi2", "mutual_info_classif"] | None
+    selection_function: SelectionFunctionOpts | None
     n_feature_selection: int = Field(gt=0)
-    reduction_function: Literal["PCA", "NMF"] | None
-    n_feature_reduction: int = Field(gt=0)
     random_state: int
     variance_threshold: float = Field(ge=0, le=1)
     correlation_threshold: float | None = Field(None, ge=0, le=1)
@@ -77,13 +84,33 @@ class Config(BaseModel):
             )
         return self
 
+    @property
+    def score_function(self) -> str | None:
+        if self.selection_function is None:
+            return None
+        func_type, func_name = self.selection_function.split(":")
+        if func_type == "score":
+            return func_name
+        else:
+            return None
+
+    @property
+    def reduction_function(self) -> str | None:
+        if self.selection_function is None:
+            return None
+        func_type, func_name = self.selection_function.split(":")
+        if func_type == "reduction":
+            return func_name
+        else:
+            return None
+
     @classmethod
-    def load_config(cls, config_path: pathlib.Path) -> "Config":
+    def load_config(cls, config_path: Path) -> "Config":
         """Load the configuration from a file.
 
         Parameters
         ----------
-        config_path : pathlib.Path
+        config_path : Path
             The path to the configuration file
 
         Returns
