@@ -169,7 +169,7 @@ cython_debug/
 .stignore
 
 # Data
-data/
+./data/
 *.pkl
 catboost_info/
 

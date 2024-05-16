@@ -34,5 +34,5 @@ jobs:
       - name: Install the project dependencies (if no cache)
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
         run: poetry install --no-interaction --no-root
-      - name: Run the automated tests (for example)
+      - name: Run the automated tests
         run: poetry run pytest -v
