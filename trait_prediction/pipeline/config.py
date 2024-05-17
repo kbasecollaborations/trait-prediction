@@ -180,7 +180,7 @@ class ConfigSet(Set[Config]):
         """The merged configuration set"""
         merged_config = dict()
         for config in self.configs:
-            for key, value in config.dict().items():
+            for key, value in config.model_dump().items():
                 if key not in merged_config:
                     merged_config[key] = set()
                 merged_config[key].add(value)
