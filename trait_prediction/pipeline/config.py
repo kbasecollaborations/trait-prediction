@@ -66,7 +66,7 @@ class Config(BaseModel):
     phenotype_sample_size_threshold: int = Field(gt=0)
     minor_class_sample_size_threshold: int = Field(gt=0)
     shap_max_display: int = Field(gt=0)
-    scoring: list[str]
+    scoring: tuple[str, ...]
     log_models: bool
     classifier_kwargs: dict[str, Any]
 
