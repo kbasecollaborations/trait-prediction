@@ -200,7 +200,11 @@ class ConfigSet(Set[Config]):
             for key, value in config.model_dump().items():
                 if key not in merged_config:
                     merged_config[key] = set()
-                merged_config[key].add(value)
+                if isinstance(value, dict):
+                    new_value = tuple([(k, v) for k, v in value.items()])
+                else:
+                    new_value = value
+                merged_config[key].add(new_value)
         return merged_config
 
     @classmethod
