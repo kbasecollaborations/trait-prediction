@@ -23,4 +23,5 @@ scoring:
     "matthews_corrcoef",
   ]
 log_models: false
-training_platform: "GPU"
+classifier_kwargs:
+  task_type: "CPU"

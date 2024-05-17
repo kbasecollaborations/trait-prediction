@@ -4,7 +4,7 @@ import multiprocessing as mp
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Protocol
 
 import pandas as pd
 
@@ -17,6 +17,12 @@ from .experiment import Experiment, ExperimentSet
 logger.remove()
 logger_extra = logger.bind(experiment="main", run="main", file=True)
 logger_std = logger.bind(experiment="main", run="main", stdout=True)
+
+
+class ClassifierType(Protocol):
+    def __call__(
+        self, random_state: int, categorical_feature_names: list[str] | None, **kwargs
+    ) -> Any: ...
 
 
 @dataclass
@@ -33,7 +39,7 @@ class TaskData:
         The experiment object.
     config : Config
         The configuration object.
-    make_classifier : Callable[[int, list[str] | None], Any]
+    make_classifier : ClassifierType
         The function to create a classifier.
         The output directory.
     random_state : int
@@ -46,7 +52,7 @@ class TaskData:
     feature: Feature
     experiment: Experiment
     config: Config
-    make_classifier: Callable[[int, list[str] | None], Any]
+    make_classifier: ClassifierType
     output_dir: Path
     random_state: int
     n_tasks: int = 0
@@ -83,7 +89,7 @@ class PredictionPipeline:
         config_set_path: Path,
         pinputs: list[PhenotypeInput],
         finputs: list[FeatureInput],
-        make_classifier: Callable[[int, list[str] | None], Any],
+        make_classifier: ClassifierType,
         output_dir: Path,
         n_cpus: int,
         random_state: int,
@@ -347,7 +353,9 @@ class PredictionPipeline:
                     categorical_feature_names.append(col)
         else:
             categorical_feature_names = None
-        classifier = make_classifier(random_state, categorical_feature_names)
+        classifier = make_classifier(
+            random_state, categorical_feature_names, **config.classifier_kwargs
+        )
         predictor = Predictor(phenotype_train, feature_train, classifier, random_state)
         task_logger.info("Predictor created")
         # Split the data into training and testing sets
