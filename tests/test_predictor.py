@@ -11,6 +11,7 @@ def test_predictor_init(leaf_dataset_data, random_state):
         objective="Logloss",
         verbose=False,
         allow_writing_files=False,
+        task_type="CPU",
         thread_count=1,
     )
     predictor = Predictor(phenotype, feature, classifier, random_state=random_state)

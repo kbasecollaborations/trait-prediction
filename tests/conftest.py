@@ -128,6 +128,7 @@ def leaf_predictor(leaf_dataset_data, random_state):
         verbose=False,
         allow_writing_files=False,
         thread_count=1,
+        task_type="CPU",
     )
     predictor = Predictor(phenotype, feature, classifier, random_state=random_state)
     return predictor
@@ -141,6 +142,7 @@ def make_classifier(random_state, categorical_feature_names):
         cat_features=categorical_feature_names,
         allow_writing_files=False,
         thread_count=1,
+        task_type="CPU",
     )
     return classifier
 
