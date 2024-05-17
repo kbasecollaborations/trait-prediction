@@ -172,6 +172,17 @@ class ConfigSet(Set[Config]):
             configs.add(verified_config)
         return cls(configs)
 
+    @property
+    def config_set(self) -> dict:
+        """The merged configuration set"""
+        merged_config = dict()
+        for config in self.configs:
+            for key, value in config.dict().items():
+                if key not in merged_config:
+                    merged_config[key] = set()
+                merged_config[key].add(value)
+        return merged_config
+
     @classmethod
     def load_configs(cls, config_paths: Iterable[Path]) -> "ConfigSet":
         """Load the configuration set from a list of files.
