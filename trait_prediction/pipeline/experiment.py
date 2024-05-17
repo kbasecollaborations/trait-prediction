@@ -505,8 +505,14 @@ class ExperimentSet(Set[Experiment]):
             experiment.parse()
             self._experiments.add(experiment)
 
+    @staticmethod
+    def _serialize_sets(obj):
+        if isinstance(obj, set):
+            return list(obj)
+        raise TypeError(f"Type {type(obj)} not serializable")
+
     def log_metadata(self, metadata: dict) -> None:
         """Log the metadata to a file."""
         self.metadata = metadata
-        with open(self.experimentset_dir / "config_set.yaml", "w") as fid:
-            yaml.safe_dump(self.metadata, fid)
+        with open(self.experimentset_dir / "metadata.json", "w") as fid:
+            json.dump(self.metadata, fid, default=self._serialize_sets)

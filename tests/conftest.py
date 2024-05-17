@@ -13,7 +13,7 @@ from trait_prediction.main import (
     PhenotypeInput,
     PhenotypeSet,
 )
-from trait_prediction.pipeline import Config, ConfigSet, PredictionPipeline
+from trait_prediction.pipeline import Config, ConfigSet, TrainingPipeline
 from trait_prediction.training import Predictor
 
 
@@ -162,18 +162,18 @@ def make_classifier(random_state, categorical_feature_names, **kwargs):
 
 @pytest.fixture(scope="function")
 def leaf_pipeline(
-    default_config_path,
+    default_configset,
     leaf_phenotype_pinputs,
     leaf_feature_finputs,
     tmp_path,
     random_state,
 ):
-    config_path = default_config_path / "default.yaml"
+    configset = default_configset
     pinputs = leaf_phenotype_pinputs
     finputs = leaf_feature_finputs
     output_dir = tmp_path
     n_cpus = 2
-    pipeline = PredictionPipeline(
-        config_path, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
+    pipeline = TrainingPipeline(
+        configset, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
     )
     return pipeline
