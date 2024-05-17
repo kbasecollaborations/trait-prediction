@@ -85,8 +85,7 @@ class TaskData:
 class PredictionPipeline:
     def __init__(
         self,
-        base_config: Config,
-        config_set_path: Path,
+        configset: ConfigSet,
         pinputs: list[PhenotypeInput],
         finputs: list[FeatureInput],
         make_classifier: ClassifierType,
@@ -95,6 +94,7 @@ class PredictionPipeline:
         random_state: int,
     ):
         logger_extra.enable("trait_prediction")
+        self.configset = configset
         self.make_classifier = make_classifier
         self.output_dir = output_dir
         self.n_cpus = n_cpus
@@ -123,8 +123,6 @@ class PredictionPipeline:
         logger_extra.info(
             f"Initialized experimentset at {self.experimentset.experimentset_dir}"
         )
-        self.configset = ConfigSet.create_configset(base_config, config_set_path)
-        logger_extra.info(f"Created configset from {config_set_path}")
         self.dataset = DataSet.read_data(pinputs, finputs)
         logger_extra.info("Loaded dataset")
         self._update_metadata()
