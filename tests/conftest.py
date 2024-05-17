@@ -134,7 +134,7 @@ def leaf_predictor(leaf_dataset_data, random_state):
     return predictor
 
 
-def make_classifier(random_state, categorical_feature_names):
+def make_classifier(random_state, categorical_feature_names, **kwargs):
     classifier = CatBoostClassifier(
         random_state=random_state,
         objective="Logloss",
@@ -142,7 +142,7 @@ def make_classifier(random_state, categorical_feature_names):
         cat_features=categorical_feature_names,
         allow_writing_files=False,
         thread_count=1,
-        task_type="CPU",
+        **kwargs,
     )
     return classifier
 
