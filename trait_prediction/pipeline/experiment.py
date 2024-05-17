@@ -260,7 +260,6 @@ class ExperimentResult:
             importance_df.to_csv(shap_features_file, index=True, sep=",")
 
 
-# TODO: Create a class ExperimentSet that contains multiple Experiment objects
 class Experiment(Set[ExperimentResult]):
     """The Experiment class represents an experiment.
 
@@ -368,3 +367,107 @@ class Experiment(Set[ExperimentResult]):
         self.metadata = metadata
         with open(self.experiment_dir / "metadata.yaml", "w") as fid:
             yaml.safe_dump(self.metadata, fid)
+
+
+# TODO: Create ExperimentSet class
+# TODO: Create a classmethod that takes in a base config and a dictionary containing a list of updated parameters.
+# This will create new configs for multiple experiments
+# TODO: Creatae a method to get the list of all tasks in the experiment set?
+
+
+class ExperimentSet(Set[Experiment]):
+    _names = NAMES
+
+    def __init__(self, experimentset_dir: Path):
+        self.experimentset_dir = experimentset_dir
+        if not self.experimentset_dir.exists():
+            self.experimentset_dir.mkdir(parents=True)
+        self._experiments = set()
+        self.config_set = {}
+
+    def __repr__(self):
+        return (
+            f"ExperimentSet (n={len(self._experiments)}, dir={self.experimentset_dir})"
+        )
+
+    def __len__(self):
+        return len(self._experiments)
+
+    def __iter__(self):
+        return iter(self._experiments)
+
+    def __contains__(self, item):
+        return item in self._experiments
+
+    @classmethod
+    def generate_experimentset_id(cls, existing_dirs: list[str], sep: str) -> str:
+        """Generate a unique experimentset ID.
+
+        Parameters
+        ----------
+        existing_dirs : list[str]
+            The list of existing directories.
+        sep : str
+            The separator between the left and right names.
+
+        Returns
+        -------
+        str
+            The experimentset ID.
+        """
+        if existing_dirs:
+            experimentset_dir = existing_dirs[0]
+            while experimentset_dir in existing_dirs:
+                left_name = random.choice(cls._names["left"])
+                middle_name = random.choice(cls._names["left"])
+                right_name = random.choice(cls._names["right"])
+                experimentset_dir = f"{left_name}{sep}{middle_name}{sep}{right_name}"
+        else:
+            left_name = random.choice(cls._names["left"])
+            middle_name = random.choice(cls._names["left"])
+            right_name = random.choice(cls._names["right"])
+            experimentset_dir = f"{left_name}{sep}{middle_name}{sep}{right_name}"
+        return experimentset_dir
+
+    @classmethod
+    def initialize(
+        cls,
+        base_dir: Path,
+        sep: str,
+    ) -> "ExperimentSet":
+        """Initialize a new ExperimentSet.
+
+        Parameters
+        ----------
+        base_dir : Path
+            The base directory.
+        sep : str
+            The separator between the left and right names.
+
+        Returns
+        -------
+        "ExperimentSet"
+            The ExperimentSet object.
+        """
+        existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
+        experimentset_dir = base_dir / cls.generate_experimentset_id(existing_dirs, sep)
+        experimentset_dir.mkdir(parents=True, exist_ok=True)
+        return cls(experimentset_dir)
+
+    def create_experiment(self) -> Experiment:
+        return Experiment.initialize(self.experimentset_dir, sep="_")
+
+    def parse(self):
+        """Parse the contents of the experimentset directory."""
+        with open(self.experimentset_dir / "config_set.yaml") as fid:
+            self.config_set = yaml.safe_load(fid)
+        for experiment_dir in self.experimentset_dir.iterdir():
+            experiment = Experiment(experiment_dir)
+            experiment.parse()
+            self._experiments.add(experiment)
+
+    def log_config_set(self, config_set: dict) -> None:
+        """Log the config_set to a file."""
+        self.config_set = config_set
+        with open(self.experimentset_dir / "config_set.yaml", "w") as fid:
+            yaml.safe_dump(self.config_set, fid)
