@@ -129,6 +129,14 @@ class Config(BaseModel):
 
 
 class ConfigSet(Set[Config]):
+    """The ConfigSet class defines a set of configurations.
+
+    Attributes
+    ----------
+    configs : The set of configurations
+    config_set : The merged configuration set as a dictionary
+    """
+
     def __init__(self, configs: Iterable[Config]) -> None:
         self.configs = set(configs)
 
