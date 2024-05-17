@@ -274,15 +274,18 @@ class Experiment(Set[ExperimentResult]):
         The directory where the experiment is stored.
     metadata : dict
         The metadata of the experiment.
+    config : Config
+        The configuration of the experiment.
     """
 
     _names = NAMES
 
-    def __init__(self, experiment_dir: Path):
+    def __init__(self, experiment_dir: Path, config: Config | None = None):
         self.experiment_dir = experiment_dir
         if not self.experiment_dir.exists():
             self.experiment_dir.mkdir(parents=True)
         self._results = set()
+        self._config: Config | None = config
         self.metadata = {}
 
     def __repr__(self):
@@ -296,6 +299,14 @@ class Experiment(Set[ExperimentResult]):
 
     def __contains__(self, item):
         return item in self._results
+
+    @property
+    def config(self) -> Config | None:
+        return self._config
+
+    @config.setter
+    def config(self, config: Config) -> None:
+        self._config = config
 
     @classmethod
     def generate_experiment_id(cls, existing_dirs: list[str], sep: str) -> str:
@@ -367,12 +378,6 @@ class Experiment(Set[ExperimentResult]):
         self.metadata = metadata
         with open(self.experiment_dir / "metadata.yaml", "w") as fid:
             yaml.safe_dump(self.metadata, fid)
-
-
-# TODO: Create ExperimentSet class
-# TODO: Create a classmethod that takes in a base config and a dictionary containing a list of updated parameters.
-# This will create new configs for multiple experiments
-# TODO: Creatae a method to get the list of all tasks in the experiment set?
 
 
 class ExperimentSet(Set[Experiment]):
@@ -478,6 +483,7 @@ class ExperimentSet(Set[Experiment]):
         experiments = set()
         for config in config_set.configs:
             experiment = Experiment.initialize(self.experimentset_dir, sep="_")
+            experiment.config = config
             metadata = {
                 **common_metadata,
                 "config": config.model_dump(),
