@@ -9,7 +9,14 @@ from typing import Any, Protocol
 import pandas as pd
 
 from ..logging import logger
-from ..main import DataSet, Feature, FeatureInput, Phenotype, PhenotypeInput
+from ..main import (
+    DataSet,
+    Feature,
+    FeatureIndex,
+    FeatureInput,
+    Phenotype,
+    PhenotypeInput,
+)
 from ..training import Predictor
 from .config import Config, ConfigSet
 from .experiment import Experiment, ExperimentSet
@@ -265,8 +272,11 @@ class TrainingPipeline:
 
     @staticmethod
     def select_features(
-        feature_data: pd.DataFrame, phenotype_data: pd.Series, config: Config
-    ) -> tuple[pd.DataFrame, list[str], pd.DataFrame | None]:
+        feature_data: pd.DataFrame,
+        phenotype_data: pd.Series,
+        findex: FeatureIndex,
+        config: Config,
+    ) -> tuple[pd.DataFrame, FeatureIndex, list[str], pd.DataFrame | None]:
         """Feature selection or reduction is applied to the feature data based on the config.
 
         Parameters
@@ -288,14 +298,16 @@ class TrainingPipeline:
                 feature_data, phenotype_data, config.score_function
             )
             components_df = None
+            new_findex = FeatureIndex(findex.name, findex.ftype, findex.dtype)
         elif config.reduction_function is not None:
             feature_data, components_df = Feature.feature_dimensionality_reduction(
                 feature_data, config.reduction_function, config.n_feature_selection
             )
+            new_findex = FeatureIndex(findex.name, "float", "float64")
             low_score_features = []
         else:
             raise ValueError("No feature selection or reduction method specified")
-        return feature_data, low_score_features, components_df
+        return feature_data, new_findex, low_score_features, components_df
 
     @staticmethod
     def _run_task(task_data: TaskData, progress, lock):
@@ -341,12 +353,14 @@ class TrainingPipeline:
         )
         task_logger.info("Feature data preprocessed")
         # Select features
-        feature_data, low_score_features, components_df = (
-            TrainingPipeline.select_features(feature_data, phenotype_data, config)
+        feature_data, new_findex, low_score_features, components_df = (
+            TrainingPipeline.select_features(
+                feature_data, phenotype_data, feature.findex, config
+            )
         )
         task_logger.info("Features selected")
         phenotype_train = Phenotype(phenotype_data, phenotype.pindex)
-        feature_train = Feature(feature_data, feature.findex)
+        feature_train = Feature(feature_data, new_findex)
         # Log the preprocessing data
         experiment_result.log_preprocessing_data(
             low_var_features,
