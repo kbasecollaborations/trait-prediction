@@ -82,7 +82,20 @@ class TaskData:
         return metadata
 
 
-class PredictionPipeline:
+class TrainingPipeline:
+    """The class that defines the pipeline for training the trait prediction models.
+
+    Attributes
+    ----------
+    configset : The configuration set object
+    make_classifier : The function to create a classifier
+    output_dir : The output directory
+    n_cpus : The number of processors to use for training
+    random_state : The random state
+    experimentset : The experiment set object
+    dataset : The dataset object
+    """
+
     def __init__(
         self,
         configset: ConfigSet,
@@ -317,19 +330,19 @@ class PredictionPipeline:
         phenotype_data = phenotype.phenotype_data
         task_logger.info("Preprocessing data")
         # Check if the data is good for training
-        if not PredictionPipeline.is_xdata_good(feature_data, config):
+        if not TrainingPipeline.is_xdata_good(feature_data, config):
             return None
-        if not PredictionPipeline.is_ydata_good(phenotype_data, config):
+        if not TrainingPipeline.is_ydata_good(phenotype_data, config):
             return None
         task_logger.info("Data is good for training")
         # Preprocess the feature data
         feature_data, low_var_features, corr_group_dict = (
-            PredictionPipeline.preprocess_feature_data(feature_data, ftype, config)
+            TrainingPipeline.preprocess_feature_data(feature_data, ftype, config)
         )
         task_logger.info("Feature data preprocessed")
         # Select features
         feature_data, low_score_features, components_df = (
-            PredictionPipeline.select_features(feature_data, phenotype_data, config)
+            TrainingPipeline.select_features(feature_data, phenotype_data, config)
         )
         task_logger.info("Features selected")
         phenotype_train = Phenotype(phenotype_data, phenotype.pindex)
