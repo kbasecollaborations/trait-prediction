@@ -46,6 +46,7 @@ class Config(BaseModel):
     shap_max_display : The maximum number of features to display in SHAP plots
     scoring : The scoring metrics to calculate
     log_models : Whether to save the estimators
+    training_platform : The platform to use for training
     score_function : The scoring function for feature selection. One of 'f_classif', 'chi2', 'mutual_info_classif'
     reduction_function : The reduction function for feature dimensionality reduction. One of 'PCA', 'NMF'
     """
@@ -66,6 +67,7 @@ class Config(BaseModel):
     shap_max_display: int = Field(gt=0)
     scoring: list[str]
     log_models: bool
+    training_platform: Literal["GPU", "CPU"]
 
     @field_validator("scoring")
     @classmethod
