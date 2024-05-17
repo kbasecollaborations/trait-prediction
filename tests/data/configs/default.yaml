@@ -1,8 +1,6 @@
 # NOTE: For binary features, v=p(1-p); if v=0.01 => p=0.01 or 0.99
-score_function: "chi2"
+selection_function: "score:chi2" # or "reduction:PCA"
 n_feature_selection: 1000
-reduction_function: null
-n_feature_reduction: 1000
 random_state: 42
 variance_threshold: 0.01
 correlation_threshold: false
@@ -25,3 +23,5 @@ scoring:
     "matthews_corrcoef",
   ]
 log_models: false
+classifier_kwargs:
+  task_type: "CPU"

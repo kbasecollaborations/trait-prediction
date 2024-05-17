@@ -1,0 +1,30 @@
+from trait_prediction.pipeline import TrainingPipeline
+
+from .conftest import make_classifier
+
+
+def test_training_pipeline_init(
+    default_configset,
+    leaf_phenotype_pinputs,
+    leaf_feature_finputs,
+    tmp_path,
+    random_state,
+):
+    configset = default_configset
+    pinputs = leaf_phenotype_pinputs
+    finputs = leaf_feature_finputs
+    output_dir = tmp_path
+    n_cpus = 2
+    pipeline = TrainingPipeline(
+        configset, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
+    )
+    assert pipeline.experimentset.experimentset_dir.is_dir()
+    assert pipeline.experimentset.experimentset_dir in list(tmp_path.iterdir())
+    assert (pipeline.experimentset.experimentset_dir / "experimentset.log").is_file()
+    assert (pipeline.experimentset.experimentset_dir / "metadata.json").is_file()
+    assert pipeline.dataset is not None
+
+
+def test_training_pipeline_run(leaf_pipeline):
+    pipeline = leaf_pipeline
+    pipeline.run()

@@ -5,4 +5,4 @@ test:
     pytest
 
 test_verbose:
-    pytest -v
+    pytest -svv

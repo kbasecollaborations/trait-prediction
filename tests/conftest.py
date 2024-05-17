@@ -13,7 +13,7 @@ from trait_prediction.main import (
     PhenotypeInput,
     PhenotypeSet,
 )
-from trait_prediction.pipeline import PredictionPipeline
+from trait_prediction.pipeline import Config, ConfigSet, TrainingPipeline
 from trait_prediction.training import Predictor
 
 
@@ -33,6 +33,19 @@ def hydra_path():
 def default_config_path(data_path):
     config_path = data_path / "configs"
     return config_path
+
+
+@pytest.fixture
+def default_config(default_config_path):
+    config_path = default_config_path / "default.yaml"
+    return Config.load_config(config_path)
+
+
+@pytest.fixture
+def default_configset(default_config_path, default_config):
+    config_set_path = default_config_path / "config_set.yaml"
+    base_config = default_config
+    return ConfigSet.create_configset(base_config, config_set_path)
 
 
 @pytest.fixture
@@ -128,12 +141,13 @@ def leaf_predictor(leaf_dataset_data, random_state):
         verbose=False,
         allow_writing_files=False,
         thread_count=1,
+        task_type="CPU",
     )
     predictor = Predictor(phenotype, feature, classifier, random_state=random_state)
     return predictor
 
 
-def make_classifier(random_state, categorical_feature_names):
+def make_classifier(random_state, categorical_feature_names, **kwargs):
     classifier = CatBoostClassifier(
         random_state=random_state,
         objective="Logloss",
@@ -141,24 +155,25 @@ def make_classifier(random_state, categorical_feature_names):
         cat_features=categorical_feature_names,
         allow_writing_files=False,
         thread_count=1,
+        **kwargs,
     )
     return classifier
 
 
 @pytest.fixture(scope="function")
 def leaf_pipeline(
-    default_config_path,
+    default_configset,
     leaf_phenotype_pinputs,
     leaf_feature_finputs,
     tmp_path,
     random_state,
 ):
-    config_path = default_config_path / "default.yaml"
+    configset = default_configset
     pinputs = leaf_phenotype_pinputs
     finputs = leaf_feature_finputs
     output_dir = tmp_path
     n_cpus = 2
-    pipeline = PredictionPipeline(
-        config_path, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
+    pipeline = TrainingPipeline(
+        configset, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
     )
     return pipeline

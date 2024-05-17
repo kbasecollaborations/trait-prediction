@@ -1,17 +1,35 @@
 """Module that defines the Pipeline class"""
 
 import multiprocessing as mp
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Protocol
 
 import pandas as pd
 
 from ..logging import logger
-from ..main import DataSet, Feature, FeatureInput, Phenotype, PhenotypeInput
+from ..main import (
+    DataSet,
+    Feature,
+    FeatureIndex,
+    FeatureInput,
+    Phenotype,
+    PhenotypeInput,
+)
 from ..training import Predictor
-from .config import Config
-from .experiment import Experiment
+from .config import Config, ConfigSet
+from .experiment import Experiment, ExperimentSet
+
+logger.remove()
+logger_extra = logger.bind(experiment="main", run="main", file=True)
+logger_std = logger.bind(experiment="main", run="main", stdout=True)
+
+
+class ClassifierType(Protocol):
+    def __call__(
+        self, random_state: int, categorical_feature_names: list[str] | None, **kwargs
+    ) -> Any: ...
 
 
 @dataclass
@@ -28,9 +46,8 @@ class TaskData:
         The experiment object.
     config : Config
         The configuration object.
-    make_classifier : Callable[[int, list[str] | None], Any]
+    make_classifier : ClassifierType
         The function to create a classifier.
-    output_dir : Path
         The output directory.
     random_state : int
         The random state.
@@ -42,7 +59,7 @@ class TaskData:
     feature: Feature
     experiment: Experiment
     config: Config
-    make_classifier: Callable[[int, list[str] | None], Any]
+    make_classifier: ClassifierType
     output_dir: Path
     random_state: int
     n_tasks: int = 0
@@ -72,36 +89,79 @@ class TaskData:
         return metadata
 
 
-class PredictionPipeline:
+class TrainingPipeline:
+    """The class that defines the pipeline for training the trait prediction models.
+
+    Attributes
+    ----------
+    configset : The configuration set object
+    make_classifier : The function to create a classifier
+    output_dir : The output directory
+    n_cpus : The number of processors to use for training
+    random_state : The random state
+    experimentset : The experiment set object
+    dataset : The dataset object
+    """
+
     def __init__(
         self,
-        config_path: Path,
+        configset: ConfigSet,
         pinputs: list[PhenotypeInput],
         finputs: list[FeatureInput],
-        make_classifier: Callable[[int, list[str] | None], Any],
+        make_classifier: ClassifierType,
         output_dir: Path,
         n_cpus: int,
         random_state: int,
     ):
-        logger.enable("trait_prediction")
+        logger_extra.enable("trait_prediction")
+        self.configset = configset
         self.make_classifier = make_classifier
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
-        self.experiment = Experiment.initialize(self.output_dir, "_")
-        log_file = self.experiment.experiment_dir / "experiment.log"
-        logger.add(log_file, enqueue=True, mode="w")
-        logger.info(f"Initialized experiment at {self.experiment.experiment_dir}")
-        self.config = Config.load_config(config_path)
-        logger.info(f"Loaded configuration from {config_path}")
+        self.experimentset = ExperimentSet.initialize(self.output_dir, sep="_")
+        log_file = self.experimentset.experimentset_dir / "experimentset.log"
+        logger_extra.add(
+            log_file,
+            enqueue=True,
+            filter=lambda record: "file" in record["extra"],
+            mode="w",
+            format="{time:YYYY-MM-DD HH:mm:ss} | {level} | Experiment:{extra[experiment]}, Run:{extra[run]} - {message}",
+        )
+        logger_std.add(
+            sys.stdout,
+            enqueue=True,
+            filter=lambda record: "stdout" in record["extra"],
+            colorize=True,
+            diagnose=True,
+            backtrace=True,
+            format=(
+                "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | "
+                "<yellow>Experiment:{extra[experiment]}, Run:{extra[run]}</yellow> - {message}"
+            ),
+        )
+        logger_extra.info(
+            f"Initialized experimentset at {self.experimentset.experimentset_dir}"
+        )
         self.dataset = DataSet.read_data(pinputs, finputs)
-        logger.info("Loaded dataset")
+        logger_extra.info("Loaded dataset")
         self._update_metadata()
-        logger.info("Updated and logged metadata")
+        logger_extra.info("Updated and logged metadata")
+        common_metadata = {
+            k: v for k, v in self.experimentset.metadata.items() if k != "configset"
+        }
+        self.experimentset.create_experiments(self.configset, common_metadata)
+        n_experiments = len(self.experimentset)
+        logger_extra.info(
+            f"Created {n_experiments} experiment folders and logged metadata"
+        )
+        logger_std.info(
+            f"Pipeline fully initialized at {self.experimentset.experimentset_dir}"
+        )
 
     def _update_metadata(self) -> None:
         metadata = {
-            "config": self.config.model_dump(),
+            "configset": self.configset.config_set,
             "n_cpus": self.n_cpus,
             "random_state": self.random_state,
             "phenotypes": [
@@ -117,7 +177,7 @@ class PredictionPipeline:
                 for f in self.dataset.feature_set
             ],
         }
-        self.experiment.log_metadata(metadata)
+        self.experimentset.log_metadata(metadata)
 
     @staticmethod
     def is_xdata_good(feature_data: pd.DataFrame, config: Config) -> bool:
@@ -212,8 +272,11 @@ class PredictionPipeline:
 
     @staticmethod
     def select_features(
-        feature_data: pd.DataFrame, phenotype_data: pd.Series, config: Config
-    ) -> tuple[pd.DataFrame, list[str], pd.DataFrame | None]:
+        feature_data: pd.DataFrame,
+        phenotype_data: pd.Series,
+        findex: FeatureIndex,
+        config: Config,
+    ) -> tuple[pd.DataFrame, FeatureIndex, list[str], pd.DataFrame | None]:
         """Feature selection or reduction is applied to the feature data based on the config.
 
         Parameters
@@ -235,14 +298,16 @@ class PredictionPipeline:
                 feature_data, phenotype_data, config.score_function
             )
             components_df = None
+            new_findex = FeatureIndex(findex.name, findex.ftype, findex.dtype)
         elif config.reduction_function is not None:
             feature_data, components_df = Feature.feature_dimensionality_reduction(
-                feature_data, config.reduction_function, config.n_feature_reduction
+                feature_data, config.reduction_function, config.n_feature_selection
             )
+            new_findex = FeatureIndex(findex.name, "float", "float64")
             low_score_features = []
         else:
             raise ValueError("No feature selection or reduction method specified")
-        return feature_data, low_score_features, components_df
+        return feature_data, new_findex, low_score_features, components_df
 
     @staticmethod
     def _run_task(task_data: TaskData, progress, lock):
@@ -255,9 +320,14 @@ class PredictionPipeline:
         """
         experiment = task_data.experiment
         experiment_result = experiment.create_result()
-        task_logger = logger.bind(worker_id=mp.current_process().name)
-        log_file = experiment_result.run_dir / "task.log"
-        task_logger.add(log_file, enqueue=True, mode="w")
+        task_logger = logger_extra.bind(
+            experiment=experiment.experiment_dir.name,
+            run=experiment_result.run_dir.name,
+        )
+        task_logger_std = logger_std.bind(
+            experiment=experiment.experiment_dir.name,
+            run=experiment_result.run_dir.name,
+        )
         phenotype = task_data.phenotype
         feature = task_data.feature
         config = task_data.config
@@ -272,23 +342,25 @@ class PredictionPipeline:
         phenotype_data = phenotype.phenotype_data
         task_logger.info("Preprocessing data")
         # Check if the data is good for training
-        if not PredictionPipeline.is_xdata_good(feature_data, config):
+        if not TrainingPipeline.is_xdata_good(feature_data, config):
             return None
-        if not PredictionPipeline.is_ydata_good(phenotype_data, config):
+        if not TrainingPipeline.is_ydata_good(phenotype_data, config):
             return None
         task_logger.info("Data is good for training")
         # Preprocess the feature data
         feature_data, low_var_features, corr_group_dict = (
-            PredictionPipeline.preprocess_feature_data(feature_data, ftype, config)
+            TrainingPipeline.preprocess_feature_data(feature_data, ftype, config)
         )
         task_logger.info("Feature data preprocessed")
         # Select features
-        feature_data, low_score_features, components_df = (
-            PredictionPipeline.select_features(feature_data, phenotype_data, config)
+        feature_data, new_findex, low_score_features, components_df = (
+            TrainingPipeline.select_features(
+                feature_data, phenotype_data, feature.findex, config
+            )
         )
         task_logger.info("Features selected")
         phenotype_train = Phenotype(phenotype_data, phenotype.pindex)
-        feature_train = Feature(feature_data, feature.findex)
+        feature_train = Feature(feature_data, new_findex)
         # Log the preprocessing data
         experiment_result.log_preprocessing_data(
             low_var_features,
@@ -306,7 +378,9 @@ class PredictionPipeline:
                     categorical_feature_names.append(col)
         else:
             categorical_feature_names = None
-        classifier = make_classifier(random_state, categorical_feature_names)
+        classifier = make_classifier(
+            random_state, categorical_feature_names, **config.classifier_kwargs
+        )
         predictor = Predictor(phenotype_train, feature_train, classifier, random_state)
         task_logger.info("Predictor created")
         # Split the data into training and testing sets
@@ -340,35 +414,40 @@ class PredictionPipeline:
         task_logger.info(
             f"Completed task. Progress: {progress.value} of {task_data.n_tasks}"
         )
+        task_logger_std.info(
+            f"Completed task. Progress: {progress.value} of {task_data.n_tasks}",
+        )
         lock.release()
 
     def run(self):
         """Run the pipeline."""
         tasks = []
-        logger.info("Running the pipeline")
+        logger_extra.info("Running the pipeline")
         manager = mp.Manager()
         progress = manager.Value("i", 0)
         lock = manager.Lock()
-        for feature_raw in self.dataset.feature_set:
-            for phenotype_raw in self.dataset.phenotype_set:
-                phenotype, feature = self.dataset.get_data(
-                    phenotype_raw.pindex, feature_raw.findex
-                )
-                task = TaskData(
-                    phenotype=phenotype,
-                    feature=feature,
-                    experiment=self.experiment,
-                    config=self.config,
-                    make_classifier=self.make_classifier,
-                    output_dir=self.output_dir,
-                    random_state=self.random_state,
-                )
-                tasks.append(task)
+        for experiment in self.experimentset:
+            for feature_raw in self.dataset.feature_set:
+                for phenotype_raw in self.dataset.phenotype_set:
+                    phenotype, feature = self.dataset.get_data(
+                        phenotype_raw.pindex, feature_raw.findex
+                    )
+                    task = TaskData(
+                        phenotype=phenotype,
+                        feature=feature,
+                        experiment=experiment,
+                        config=experiment.config,
+                        make_classifier=self.make_classifier,
+                        output_dir=self.output_dir,
+                        random_state=self.random_state,
+                    )
+                    tasks.append(task)
         for task in tasks:
             task.n_tasks = len(tasks)
-        logger.info(f"Generated {len(tasks)} tasks")
+        logger_extra.info(f"Generated {len(tasks)} tasks")
+        logger_std.info(f"Generated {len(tasks)} tasks")
         with mp.Pool(self.n_cpus) as pool:
             pool.starmap(self._run_task, [(task, progress, lock) for task in tasks])
-        logger.info(
+        logger_extra.info(
             f"Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
         )

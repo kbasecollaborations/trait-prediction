@@ -1,0 +1,2 @@
+selection_function: ["score:chi2", "reduction:PCA"]
+random_state: [42, 0]
