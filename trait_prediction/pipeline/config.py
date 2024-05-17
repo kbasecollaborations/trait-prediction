@@ -1,5 +1,6 @@
 """Module that defines the Config class"""
 
+import json
 from collections.abc import Set
 from itertools import product
 from pathlib import Path
@@ -68,6 +69,11 @@ class Config(BaseModel):
     scoring: list[str]
     log_models: bool
     classifier_kwargs: dict[str, Any]
+
+    def __hash__(self):
+        model_dict = self.model_dump()
+        model_str = json.dumps(model_dict, sort_keys=True)
+        return hash(model_str)
 
     @field_validator("scoring")
     @classmethod
