@@ -142,14 +142,14 @@ class ConfigSet(Set[Config]):
 
     @classmethod
     def create_configset(
-        cls, base_config_path: Path, config_set_path: Path
+        cls, base_config: Config, config_set_path: Path
     ) -> "ConfigSet":
-        """Create a configuration set base config and a config_set
+        """Create a configuration set using the base_config and a config_set
 
         Parameters
         ----------
-        base_config_path : Path
-            The path to the base configuration file
+        base_config : Config
+            The base configuration
         config_set_path : Path
             The path to the configuration set file
 
@@ -159,12 +159,7 @@ class ConfigSet(Set[Config]):
             The configuration set object
         """
         configs = set()
-        with open(base_config_path, "r") as file:
-            config = yaml.safe_load(file)
-        try:
-            Config(**config)
-        except ValidationError as e:
-            raise e
+        base_config_dict = base_config.model_dump()
         with open(config_set_path, "r") as file:
             config_set = yaml.safe_load(file)
         keys, values = zip(*config_set.items())
@@ -172,7 +167,7 @@ class ConfigSet(Set[Config]):
             dict(zip(keys, combination)) for combination in product(*values)
         ]
         for new_config_dict in new_config_dicts:
-            updated_config = {**config, **new_config_dict}
+            updated_config = {**base_config_dict, **new_config_dict}
             try:
                 verified_config = Config(**updated_config)
             except ValidationError as e:
