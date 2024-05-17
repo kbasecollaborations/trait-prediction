@@ -11,8 +11,8 @@ import pandas as pd
 from ..logging import logger
 from ..main import DataSet, Feature, FeatureInput, Phenotype, PhenotypeInput
 from ..training import Predictor
-from .config import Config
-from .experiment import Experiment
+from .config import Config, ConfigSet
+from .experiment import Experiment, ExperimentSet
 
 logger.remove()
 logger_extra = logger.bind(experiment="main", run="main", file=True)
@@ -79,7 +79,8 @@ class TaskData:
 class PredictionPipeline:
     def __init__(
         self,
-        config_path: Path,
+        base_config: Config,
+        config_set_path: Path,
         pinputs: list[PhenotypeInput],
         finputs: list[FeatureInput],
         make_classifier: Callable[[int, list[str] | None], Any],
@@ -92,8 +93,8 @@ class PredictionPipeline:
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
-        self.experiment = Experiment.initialize(self.output_dir, "_")
-        log_file = self.experiment.experiment_dir / "experiment.log"
+        self.experimentset = ExperimentSet.initialize(self.output_dir, sep="_")
+        log_file = self.experimentset.experimentset_dir / "experimentset.log"
         logger_extra.add(
             log_file,
             enqueue=True,
@@ -113,18 +114,30 @@ class PredictionPipeline:
                 "<yellow>Experiment:{extra[experiment]}, Run:{extra[run]}</yellow> - {message}"
             ),
         )
-        logger_extra.info(f"Initialized experiment at {self.experiment.experiment_dir}")
-        self.config = Config.load_config(config_path)
-        logger_extra.info(f"Loaded configuration from {config_path}")
+        logger_extra.info(
+            f"Initialized experimentset at {self.experimentset.experimentset_dir}"
+        )
+        self.configset = ConfigSet.create_configset(base_config, config_set_path)
+        logger_extra.info(f"Created configset from {config_set_path}")
         self.dataset = DataSet.read_data(pinputs, finputs)
         logger_extra.info("Loaded dataset")
         self._update_metadata()
         logger_extra.info("Updated and logged metadata")
-        logger_std.info(f"Pipeline initialized at {self.experiment.experiment_dir}")
+        common_metadata = {
+            k: v for k, v in self.experimentset.metadata.items() if k != "configset"
+        }
+        self.experimentset.create_experiments(self.configset, common_metadata)
+        n_experiments = len(self.experimentset)
+        logger_extra.info(
+            f"Created {n_experiments} experiment folders and logged metadata"
+        )
+        logger_std.info(
+            f"Pipeline fully initialized at {self.experimentset.experimentset_dir}"
+        )
 
     def _update_metadata(self) -> None:
         metadata = {
-            "config": self.config.model_dump(),
+            "configset": self.configset.config_set,
             "n_cpus": self.n_cpus,
             "random_state": self.random_state,
             "phenotypes": [
@@ -140,7 +153,7 @@ class PredictionPipeline:
                 for f in self.dataset.feature_set
             ],
         }
-        self.experiment.log_metadata(metadata)
+        self.experimentset.log_metadata(metadata)
 
     @staticmethod
     def is_xdata_good(feature_data: pd.DataFrame, config: Config) -> bool:
@@ -278,7 +291,6 @@ class PredictionPipeline:
         """
         experiment = task_data.experiment
         experiment_result = experiment.create_result()
-        # FIXME: Does not work as intended
         task_logger = logger_extra.bind(
             experiment=experiment.experiment_dir.name,
             run=experiment_result.run_dir.name,
@@ -371,7 +383,6 @@ class PredictionPipeline:
         )
         task_logger_std.info(
             f"Completed task. Progress: {progress.value} of {task_data.n_tasks}",
-            extra={},
         )
         lock.release()
 
@@ -382,21 +393,22 @@ class PredictionPipeline:
         manager = mp.Manager()
         progress = manager.Value("i", 0)
         lock = manager.Lock()
-        for feature_raw in self.dataset.feature_set:
-            for phenotype_raw in self.dataset.phenotype_set:
-                phenotype, feature = self.dataset.get_data(
-                    phenotype_raw.pindex, feature_raw.findex
-                )
-                task = TaskData(
-                    phenotype=phenotype,
-                    feature=feature,
-                    experiment=self.experiment,
-                    config=self.config,
-                    make_classifier=self.make_classifier,
-                    output_dir=self.output_dir,
-                    random_state=self.random_state,
-                )
-                tasks.append(task)
+        for experiment in self.experimentset:
+            for feature_raw in self.dataset.feature_set:
+                for phenotype_raw in self.dataset.phenotype_set:
+                    phenotype, feature = self.dataset.get_data(
+                        phenotype_raw.pindex, feature_raw.findex
+                    )
+                    task = TaskData(
+                        phenotype=phenotype,
+                        feature=feature,
+                        experiment=experiment,
+                        config=experiment.config,
+                        make_classifier=self.make_classifier,
+                        output_dir=self.output_dir,
+                        random_state=self.random_state,
+                    )
+                    tasks.append(task)
         for task in tasks:
             task.n_tasks = len(tasks)
         logger_extra.info(f"Generated {len(tasks)} tasks")
