@@ -148,6 +148,15 @@ class ConfigSet(Set[Config]):
     def __init__(self, configs: Iterable[Config]) -> None:
         self.configs = set(configs)
 
+    def __len__(self) -> int:
+        return len(self.configs)
+
+    def __iter__(self):
+        return iter(self.configs)
+
+    def __contains__(self, item) -> bool:
+        return item in self.configs
+
     @classmethod
     def create_configset(
         cls, base_config: Config, config_set_path: Path
