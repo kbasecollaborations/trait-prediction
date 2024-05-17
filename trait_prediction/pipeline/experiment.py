@@ -300,6 +300,9 @@ class Experiment(Set[ExperimentResult]):
     def __contains__(self, item):
         return item in self._results
 
+    def __hash__(self):
+        return hash(self.experiment_dir)
+
     @property
     def config(self) -> Config | None:
         return self._config
@@ -482,7 +485,7 @@ class ExperimentSet(Set[Experiment]):
         """
         experiments = set()
         for config in config_set.configs:
-            experiment = Experiment.initialize(self.experimentset_dir, sep="_")
+            experiment = self.create_experiment()
             experiment.config = config
             metadata = {
                 **common_metadata,
