@@ -12,7 +12,7 @@ import yaml
 
 from ..training import Predictor, Score
 from ..visualization.feature_importances import plot_shap_summary
-from .config import Config
+from .config import Config, ConfigSet
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 NAMES = json.loads((DATA_DIR / "names.json").read_text())
@@ -455,7 +455,37 @@ class ExperimentSet(Set[Experiment]):
         return cls(experimentset_dir)
 
     def create_experiment(self) -> Experiment:
+        """Create a new experiment."""
         return Experiment.initialize(self.experimentset_dir, sep="_")
+
+    def create_experiments(
+        self, config_set: ConfigSet, common_metadata: dict
+    ) -> set[Experiment]:
+        """Create a set of experiments.
+
+        Parameters
+        ----------
+        config_set : ConfigSet
+            The configuration set.
+        common_metadata : dict
+            The common metadata.
+
+        Returns
+        -------
+        set[Experiment]
+            The set of experiments.
+        """
+        experiments = set()
+        for config in config_set.configs:
+            experiment = Experiment.initialize(self.experimentset_dir, sep="_")
+            metadata = {
+                **common_metadata,
+                "config": config.model_dump(),
+            }
+            experiment.log_metadata(metadata)
+            self._experiments.add(experiment)
+            experiments.add(experiment)
+        return experiments
 
     def parse(self):
         """Parse the contents of the experimentset directory."""
