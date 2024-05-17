@@ -383,7 +383,7 @@ class ExperimentSet(Set[Experiment]):
         if not self.experimentset_dir.exists():
             self.experimentset_dir.mkdir(parents=True)
         self._experiments = set()
-        self.config_set = {}
+        self.metadata = {}
 
     def __repr__(self):
         return (
@@ -490,14 +490,14 @@ class ExperimentSet(Set[Experiment]):
     def parse(self):
         """Parse the contents of the experimentset directory."""
         with open(self.experimentset_dir / "config_set.yaml") as fid:
-            self.config_set = yaml.safe_load(fid)
+            self.metadata = yaml.safe_load(fid)
         for experiment_dir in self.experimentset_dir.iterdir():
             experiment = Experiment(experiment_dir)
             experiment.parse()
             self._experiments.add(experiment)
 
-    def log_config_set(self, config_set: dict) -> None:
-        """Log the config_set to a file."""
-        self.config_set = config_set
+    def log_metadata(self, metadata: dict) -> None:
+        """Log the metadata to a file."""
+        self.metadata = metadata
         with open(self.experimentset_dir / "config_set.yaml", "w") as fid:
-            yaml.safe_dump(self.config_set, fid)
+            yaml.safe_dump(self.metadata, fid)
