@@ -13,7 +13,7 @@ from trait_prediction.main import (
     PhenotypeInput,
     PhenotypeSet,
 )
-from trait_prediction.pipeline import PredictionPipeline
+from trait_prediction.pipeline import Config, ConfigSet, PredictionPipeline
 from trait_prediction.training import Predictor
 
 
@@ -33,6 +33,19 @@ def hydra_path():
 def default_config_path(data_path):
     config_path = data_path / "configs"
     return config_path
+
+
+@pytest.fixture
+def default_config(default_config_path):
+    config_path = default_config_path / "default.yaml"
+    return Config.load_config(config_path)
+
+
+@pytest.fixture
+def default_configset(default_config_path, default_config):
+    config_set_path = default_config_path / "config_set.yaml"
+    base_config = default_config
+    return ConfigSet.create_configset(base_config, config_set_path)
 
 
 @pytest.fixture
