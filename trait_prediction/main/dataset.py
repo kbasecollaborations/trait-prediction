@@ -47,6 +47,31 @@ class DataSet:
         feature_set = FeatureSet.read_data(finputs)
         return cls(phenotype_set, feature_set)
 
+    @classmethod
+    def merge_data(
+        cls,
+        pinput_tuples: list[tuple[PhenotypeInput, ...]],
+        finput_tuples: list[tuple[FeatureInput, ...]],
+    ) -> "DataSet":
+        """
+        Merges the feature and phenotype data from multiple inputs.
+
+        Parameters
+        ----------
+        pinput_tuples : list[tuple[PhenotypeInput, ...]]
+            List of tuples containing multiple PhenotypeInput objects.
+        finput_tuples : list[tuple[FeatureInput, ...]]
+            List of tuples containing multiple FeatureInput objects.
+
+        Returns
+        -------
+        DataSet
+            DataSet object.
+        """
+        phenotype_set = PhenotypeSet.merge_data(pinput_tuples)
+        feature_set = FeatureSet.merge_data(finput_tuples)
+        return cls(phenotype_set, feature_set)
+
     def get_phenotype(self, pindex: PhenotypeIndex) -> Phenotype:
         """
         Get a phenotype by name and category.
