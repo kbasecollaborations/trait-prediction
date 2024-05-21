@@ -167,6 +167,34 @@ class Feature:
         feature_df.index.name = "genomeID"
         return cls(feature_df, finput.findex)
 
+    @classmethod
+    def merge_data(cls, finputs: tuple[FeatureInput, ...]) -> "Feature":
+        """Merges feature data (concat rows) from multiple FeatureInput objects and returns a Feature object.
+
+        Parameters
+        ----------
+        finputs : tuple[FeatureInput, ...]
+            Tuple of FeatureInput objects.
+
+        Returns
+        -------
+        Feature
+            The Feature object.
+        """
+        features: list[Feature] = []
+        for finput in finputs:
+            feature = cls.read_data(finput)
+            features.append(feature)
+        feature_data = pd.concat([feature.feature_data for feature in features])
+        if len(set([feature.findex.name for feature in features])) > 1:
+            raise ValueError("The features must have the same name")
+        findex = FeatureIndex(
+            name=features[0].findex.name,
+            ftype=features[0].findex.ftype,
+            dtype=features[0].findex.dtype,
+        )
+        return cls(feature_data, findex)
+
     @property
     def feature_data(self) -> pd.DataFrame:
         """Pandas DataFrame containing the feature data."""
