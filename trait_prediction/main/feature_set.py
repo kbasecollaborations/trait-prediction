@@ -79,3 +79,23 @@ class FeatureSet(Set[Feature]):
         for finput in finputs:
             features.append(Feature.read_data(finput))
         return cls(features)
+
+    @classmethod
+    def merge_data(cls, finput_tuples: list[tuple[FeatureInput, ...]]) -> "FeatureSet":
+        """
+        Merges the feature data from multiple Feature objects and returns a FeatureSet object.
+
+        Parameters
+        ---------
+        finput_tuples : list[tuple[FeatureInput, ...]]
+            List of tuples containing FeatureInput objects.
+
+        Returns
+        ------
+        FeatureSet
+            FeatureSet object containing the merged feature data.
+        """
+        features = []
+        for finputs in finput_tuples:
+            features.append(Feature.merge_data(finputs))
+        return cls(features)
