@@ -185,7 +185,9 @@ class Feature:
         for finput in finputs:
             feature = cls.read_data(finput)
             features.append(feature)
-        feature_data = pd.concat([feature.feature_data for feature in features])
+        feature_data = pd.concat([feature.feature_data for feature in features]).fillna(
+            0
+        )
         if len(set([feature.findex.name for feature in features])) > 1:
             raise ValueError("The features must have the same name")
         findex = FeatureIndex(
