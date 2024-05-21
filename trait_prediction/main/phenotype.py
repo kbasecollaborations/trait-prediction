@@ -125,7 +125,36 @@ class Phenotype:
         phenotype_data = raw_phenotype_df.iloc[:, 0]
         pd_index = pd.Series(phenotype_data.index)
         phenotype_data.index = pd_index.apply(index_format_func)
-        return Phenotype(phenotype_data, pinput.pindex)
+        return cls(phenotype_data, pinput.pindex)
+
+    @classmethod
+    def merge_data(cls, pinputs: tuple[PhenotypeInput, ...]) -> "Phenotype":
+        """Merge the phenotype data from multiple Phenotype objects.
+
+        Parameters
+        ----------
+        pinputs : tuple[PhenotypeInput, ...]
+            Tuple of PhenotypeInput objects.
+
+        Returns
+        -------
+        "Phenotype"
+            The merged Phenotype object.
+        """
+        phenotypes: list[Phenotype] = []
+        for pinput in pinputs:
+            phenotype = cls.read_data(pinput)
+            phenotypes.append(phenotype)
+        phenotype_data = pd.concat(
+            [phenotype.phenotype_data for phenotype in phenotypes]
+        )
+        if len(set([phenotype.pindex.name for phenotype in phenotypes])) > 1:
+            raise ValueError("The phenotypes must have the same name")
+        pindex = PhenotypeIndex(
+            name=phenotypes[0].pindex.name,
+            category="+".join([phenotype.pindex.category for phenotype in phenotypes]),
+        )
+        return cls(phenotype_data, pindex)
 
     def save(self, file_path: str | pathlib.Path) -> None:
         """
