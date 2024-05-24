@@ -38,6 +38,7 @@ pytest = "^7.4.0"
 mypy = "^1.5.1"
 black = "^23.7.0"
 ipython = "^8.20.0"
+jupyter = "^1.0.0"
 
 [build-system]
 requires = ["poetry-core"]
