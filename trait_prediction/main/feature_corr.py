@@ -168,6 +168,8 @@ class GraphCorrelationFilter:
             current_degree_list = degree_list[current_degree_idx]
             while len(current_degree_list) > 0:
                 entry = current_degree_list.pop()
+                if self._graph.degree[entry] == 0:
+                    continue
                 is_current = self._graph.degree[entry] == current_degree_idx + 1
                 if is_current:
                     self._graph.remove_node(entry)
