@@ -16,7 +16,7 @@ from sklearn.feature_selection import (
     mutual_info_classif,
 )
 
-from .feature_preprocessing import (
+from .feature_corr import (
     _find_corr_cols_numba,
     _find_corr_cols_numba_parallel,
     _find_corr_cols_numpy,
