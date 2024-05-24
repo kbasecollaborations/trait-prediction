@@ -16,12 +16,7 @@ from sklearn.feature_selection import (
     mutual_info_classif,
 )
 
-from .feature_corr import (
-    _find_corr_cols_numba,
-    _find_corr_cols_numba_parallel,
-    _find_corr_cols_numpy,
-    _pearson_correlation_coefficient,
-)
+from .feature_corr import GraphCorrelationFilter
 
 
 @dataclass(frozen=True)
@@ -234,7 +229,7 @@ class Feature:
 
     @staticmethod
     def remove_features_with_high_correlation(
-        feature_df: pd.DataFrame, threshold: float = 0.95, method: str = "numpy"
+        feature_df: pd.DataFrame, threshold: float = 0.95, parallel: bool = False
     ) -> tuple[pd.DataFrame, dict[str, list[str]]]:
         """
         Removes features with high correlation from the given feature DataFrame.
@@ -246,10 +241,9 @@ class Feature:
         threshold : float
             Threshold for the correlation of the features.
             Default value is 0.95
-        method : str, optional
-            Method used to calculate correlated features
-            Options available are 'numpy', 'numba_parallel' and 'numba'
-            Default value is 'numpy'
+        parallel : bool
+            Whether to use parallel computation.
+            Default value is False
 
         Returns
         ------
@@ -259,29 +253,16 @@ class Feature:
             Dictionary of the features with high correlation that were removed
         """
         # Get correlated columns
-        if method == "numba_parallel":
-            corr_cols = _find_corr_cols_numba_parallel(feature_df.to_numpy(), threshold)
-        elif method == "numba":
-            corr_cols = _find_corr_cols_numba(feature_df.to_numpy(), threshold)
-        elif method == "numpy":
-            corr_matrix = _pearson_correlation_coefficient(feature_df.to_numpy().T)
-            corr_cols = _find_corr_cols_numpy(corr_matrix, threshold)
-        else:
-            raise ValueError(
-                f"method {method} is not supported. Supported methods are numpy, numba_parallel, numba"
-            )
+        feature_pl = pl.from_pandas(feature_df, include_index=True)
+        graph_corr = GraphCorrelationFilter(
+            feature_pl, id_col="genomeID", threshold=threshold, parallel=parallel
+        )
         # Find columns to drop
-        cols_to_drop = set()
-        corr_group_dict = dict()
-        cols = feature_df.columns
-        for i, corr_col in enumerate(corr_cols):
-            if len(corr_col) < 1:
-                continue
-            cols_to_drop.update(corr_col)
-            corr_group_dict[cols[i]] = list(cols[corr_col])
+        corr_group_dict = graph_corr.find_corr_cols()
         # Drop the columns from the DataFrame
+        feature_pl_dropped = graph_corr.remove_corr_cols()
         return (
-            feature_df.drop(list(feature_df.columns[list(cols_to_drop)]), axis=1),
+            feature_pl_dropped.to_pandas().set_index("genomeID"),
             corr_group_dict,
         )
 
