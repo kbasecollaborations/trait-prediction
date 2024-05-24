@@ -255,15 +255,9 @@ class TrainingPipeline:
             low_var_features = []
         # Correlation filtering
         if config.correlation_threshold is not None:
-            # TODO: Is it possible to avoid hardcoding the method here?
-            n_features = feature_data.shape[1]
-            if n_features <= 40_000:
-                corr_method = "numpy"
-            else:
-                corr_method = "numba"
             feature_data, corr_group_dict = (
                 Feature.remove_features_with_high_correlation(
-                    feature_data, config.correlation_threshold, method=corr_method
+                    feature_data, config.correlation_threshold, parallel=False
                 )
             )
         else:
