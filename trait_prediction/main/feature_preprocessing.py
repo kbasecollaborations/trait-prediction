@@ -1,4 +1,4 @@
-"""Module that contains functions for eliminating features"""
+"""Module that contains functions for preprocessing features"""
 
 import numpy as np
 from numba import jit, prange, typed, types
