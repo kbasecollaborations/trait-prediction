@@ -22,7 +22,7 @@ from .config import Config, ConfigSet
 from .experiment import Experiment, ExperimentSet
 
 logger.remove()
-logger_extra = logger.bind(experiment="main", run="main", file=True)
+logger_file = logger.bind(experiment="main", run="main", file=True)
 logger_std = logger.bind(experiment="main", run="main", stdout=True)
 
 
@@ -46,8 +46,9 @@ class TaskData:
         The experiment object.
     config : Config
         The configuration object.
-    make_classifier : ClassifierType
-        The function to create a classifier.
+    classifier_factory : dict[str, ClassifierType]
+        The dictionary that contains functions to create a classifier.
+    output_dir : Path
         The output directory.
     random_state : int
         The random state.
@@ -59,7 +60,7 @@ class TaskData:
     feature: Feature
     experiment: Experiment
     config: Config
-    make_classifier: ClassifierType
+    classifier_factory: dict[str, ClassifierType]
     output_dir: Path
     random_state: int
     n_tasks: int = 0
@@ -95,7 +96,7 @@ class TrainingPipeline:
     Attributes
     ----------
     configset : The configuration set object
-    make_classifier : The function to create a classifier
+    classifier_factory : The dictionary that contains functions to create a classifier
     output_dir : The output directory
     n_cpus : The number of processors to use for training
     random_state : The random state
@@ -108,20 +109,20 @@ class TrainingPipeline:
         configset: ConfigSet,
         pinputs: list[PhenotypeInput],
         finputs: list[FeatureInput],
-        make_classifier: ClassifierType,
+        classifier_factory: dict[str, ClassifierType],
         output_dir: Path,
         n_cpus: int,
         random_state: int,
     ):
-        logger_extra.enable("trait_prediction")
+        logger_file.enable("trait_prediction")
         self.configset = configset
-        self.make_classifier = make_classifier
+        self.classifier_factory = classifier_factory
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
         self.experimentset = ExperimentSet.initialize(self.output_dir, sep="_")
         log_file = self.experimentset.experimentset_dir / "experimentset.log"
-        logger_extra.add(
+        logger_file.add(
             log_file,
             enqueue=True,
             filter=lambda record: "file" in record["extra"],
@@ -140,24 +141,30 @@ class TrainingPipeline:
                 "<yellow>Experiment:{extra[experiment]}, Run:{extra[run]}</yellow> - {message}"
             ),
         )
-        logger_extra.info(
+        logger_file.info(
             f"Initialized experimentset at {self.experimentset.experimentset_dir}"
         )
         self.dataset = DataSet.read_data(pinputs, finputs)
-        logger_extra.info("Loaded dataset")
+        logger_file.info("Loaded dataset")
         self._update_metadata()
-        logger_extra.info("Updated and logged metadata")
+        logger_file.info("Updated and logged metadata")
         common_metadata = {
             k: v for k, v in self.experimentset.metadata.items() if k != "configset"
         }
         self.experimentset.create_experiments(self.configset, common_metadata)
         n_experiments = len(self.experimentset)
-        logger_extra.info(
+        logger_file.info(
             f"Created {n_experiments} experiment folders and logged metadata"
         )
         logger_std.info(
             f"Pipeline fully initialized at {self.experimentset.experimentset_dir}"
         )
+        for experiment in self.experimentset:
+            if experiment.config.classifier not in self.classifier_factory:
+                error_str = f"Classifier {experiment.config.classifier} not found in the classifier factory"
+                logger_file.error(error_str)
+                logger_std.error(error_str)
+                raise ValueError(error_str)
 
     def _update_metadata(self) -> None:
         metadata = {
@@ -314,7 +321,7 @@ class TrainingPipeline:
         """
         experiment = task_data.experiment
         experiment_result = experiment.create_result()
-        task_logger = logger_extra.bind(
+        task_logger = logger_file.bind(
             experiment=experiment.experiment_dir.name,
             run=experiment_result.run_dir.name,
         )
@@ -325,7 +332,8 @@ class TrainingPipeline:
         phenotype = task_data.phenotype
         feature = task_data.feature
         config = task_data.config
-        make_classifier = task_data.make_classifier
+        classifier_factory = task_data.classifier_factory
+        make_classifier = classifier_factory[config.classifier]
         random_state = task_data.random_state
         # Log the metadata
         task_logger.info("Task setup successfully. Logging metadata")
@@ -416,7 +424,7 @@ class TrainingPipeline:
     def run(self):
         """Run the pipeline."""
         tasks = []
-        logger_extra.info("Running the pipeline")
+        logger_file.info("Running the pipeline")
         manager = mp.Manager()
         progress = manager.Value("i", 0)
         lock = manager.Lock()
@@ -431,17 +439,17 @@ class TrainingPipeline:
                         feature=feature,
                         experiment=experiment,
                         config=experiment.config,
-                        make_classifier=self.make_classifier,
+                        classifier_factory=self.classifier_factory,
                         output_dir=self.output_dir,
                         random_state=self.random_state,
                     )
                     tasks.append(task)
         for task in tasks:
             task.n_tasks = len(tasks)
-        logger_extra.info(f"Generated {len(tasks)} tasks")
+        logger_file.info(f"Generated {len(tasks)} tasks")
         logger_std.info(f"Generated {len(tasks)} tasks")
         with mp.Pool(self.n_cpus) as pool:
             pool.starmap(self._run_task, [(task, progress, lock) for task in tasks])
-        logger_extra.info(
+        logger_file.info(
             f"Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
         )
