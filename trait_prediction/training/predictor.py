@@ -127,20 +127,34 @@ class Score:
         scores_file = folder / f"scores_{self.kind}.csv"
         self.scores.to_csv(scores_file)
 
-    def save_estimators(self, folder: str | pathlib.Path) -> None:
+    def save_estimators(
+        self, folder: str | pathlib.Path, subset: str, metric: str
+    ) -> None:
         """Save the estimators to a folder.
 
         Parameters
         ----------
         folder : str | pathlib.Path
             Folder to save the objects
+        subset : str
+            The subset of the estimators to save. Either 'all' or 'best'.
+        metric : str
+            The metric to use for selecting the best estimators.
+            Only used if subset is 'best'.
         """
         folder = pathlib.Path(folder)
         folder.mkdir(exist_ok=True, parents=True)
-        for i, estimator in enumerate(self.estimators):
+        if subset == "best":
+            i = np.argmax(self.scores[metric])
+            estimator = self.estimators[i]
             estimator_file = folder / f"estimator_{self.kind}_{i}.pkl"
             with open(estimator_file, "wb") as fid:
                 pickle.dump(estimator, fid)
+        else:
+            for i, estimator in enumerate(self.estimators):
+                estimator_file = folder / f"estimator_{self.kind}_{i}.pkl"
+                with open(estimator_file, "wb") as fid:
+                    pickle.dump(estimator, fid)
 
 
 class Predictor:

@@ -22,7 +22,7 @@ scoring:
     "roc_auc",
     "matthews_corrcoef",
   ]
-log_models: false
+log_models: "best"
 classifier: "catboost"
 classifier_kwargs:
   eval_metric: "BalancedAccuracy" # "Accuracy" / "LogLoss" / "MCC"

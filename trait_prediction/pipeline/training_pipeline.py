@@ -408,7 +408,10 @@ class TrainingPipeline:
         task_logger.info("Metrics logged")
         # Log the models
         if config.log_models:
-            experiment_result.log_models(score)
+            # FIXME: Avoid hardcoding the metric
+            experiment_result.log_models(
+                score, subset=config.log_models, metric="balanced_accuracy"
+            )
             task_logger.info("Models logged")
         # Log the plots
         experiment_result.log_plots(score, feature_data, config)

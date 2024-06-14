@@ -218,17 +218,22 @@ class ExperimentResult:
         output_dir.mkdir(parents=True, exist_ok=True)
         score.save_scores(output_dir)
 
-    def log_models(self, score: Score) -> None:
+    def log_models(self, score: Score, subset: str, metric: str) -> None:
         """Save the models.
 
         Parameters
         ----------
         score : Score
             The score object.
+        subset : str
+            The subset of the estimators to save. Either 'all' or 'best'.
+        metric : str
+            The metric to use for selecting the best estimators.
+            Only used if subset is 'best'.
         """
         output_dir = self.run_dir / "models"
         output_dir.mkdir(parents=True, exist_ok=True)
-        score.save_estimators(output_dir)
+        score.save_estimators(output_dir, subset, metric)
 
     def log_plots(self, score: Score, X: pd.DataFrame, config: Config) -> None:
         """Save the visualizations.
