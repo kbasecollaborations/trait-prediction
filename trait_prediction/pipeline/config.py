@@ -28,7 +28,7 @@ SelectionFunctionOpts = Literal[
 
 ClassifierOpts = Literal[
     "catboost",
-    "nearest_neighbors",
+    "nearest_neighbor",
     "identity",
     "bernoulli",
 ]
