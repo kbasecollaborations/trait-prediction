@@ -152,7 +152,7 @@ class Feature:
             has_header=True,
             separator="\t",
             columns=header,
-            dtypes=dtypes,
+            schema_overrides=dtypes,
             use_pyarrow=False,
         ).to_pandas()
         feature_df[id_col] = feature_df[id_col].apply(index_format_func)
