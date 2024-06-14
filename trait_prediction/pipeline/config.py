@@ -26,6 +26,13 @@ SelectionFunctionOpts = Literal[
     "reduction:NMF",
 ]
 
+ClassifierOpts = Literal[
+    "catboost",
+    "nearest_neighbor",
+    "identity",
+    "bernoulli",
+]
+
 
 class Config(BaseModel):
     """The Config class defines the configuration for the pipeline.
@@ -46,10 +53,9 @@ class Config(BaseModel):
     minor_class_sample_size_threshold : The threshold for the minimum number of samples for a minor class
     shap_max_display : The maximum number of features to display in SHAP plots
     scoring : The scoring metrics to calculate
-    log_models : Whether to save the estimators
+    log_models : Whether to save the estimators (None, all, best)
+    classifier : The classifier to use
     classifier_kwargs : The keyword arguments for the classifier
-    score_function : The scoring function for feature selection. One of 'f_classif', 'chi2', 'mutual_info_classif'
-    reduction_function : The reduction function for feature dimensionality reduction. One of 'PCA', 'NMF'
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -67,7 +73,8 @@ class Config(BaseModel):
     minor_class_sample_size_threshold: int = Field(gt=0)
     shap_max_display: int = Field(gt=0)
     scoring: tuple[str, ...]
-    log_models: bool
+    log_models: Literal["all", "best"] | None
+    classifier: ClassifierOpts
     classifier_kwargs: dict[str, Any]
 
     def __hash__(self):

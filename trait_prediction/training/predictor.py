@@ -7,6 +7,8 @@ from typing import Iterable
 
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
+from sklearn.metrics import get_scorer
 from sklearn.model_selection import KFold, StratifiedKFold, cross_validate
 
 from ..main import Feature, FeatureIndex, Phenotype, PhenotypeIndex
@@ -125,20 +127,34 @@ class Score:
         scores_file = folder / f"scores_{self.kind}.csv"
         self.scores.to_csv(scores_file)
 
-    def save_estimators(self, folder: str | pathlib.Path) -> None:
+    def save_estimators(
+        self, folder: str | pathlib.Path, subset: str, metric: str
+    ) -> None:
         """Save the estimators to a folder.
 
         Parameters
         ----------
         folder : str | pathlib.Path
             Folder to save the objects
+        subset : str
+            The subset of the estimators to save. Either 'all' or 'best'.
+        metric : str
+            The metric to use for selecting the best estimators.
+            Only used if subset is 'best'.
         """
         folder = pathlib.Path(folder)
         folder.mkdir(exist_ok=True, parents=True)
-        for i, estimator in enumerate(self.estimators):
+        if subset == "best":
+            i = np.argmax(self.scores[metric])
+            estimator = self.estimators[i]
             estimator_file = folder / f"estimator_{self.kind}_{i}.pkl"
             with open(estimator_file, "wb") as fid:
                 pickle.dump(estimator, fid)
+        else:
+            for i, estimator in enumerate(self.estimators):
+                estimator_file = folder / f"estimator_{self.kind}_{i}.pkl"
+                with open(estimator_file, "wb") as fid:
+                    pickle.dump(estimator, fid)
 
 
 class Predictor:
@@ -330,8 +346,6 @@ class Predictor:
         ----------
         kind : str
             The type of data to use. Either 'CV' or 'test'.
-        n_jobs : int
-            The number of jobs to run in parallel.
         scoring : Iterable[str]
             The scoring metrics to use.
 
@@ -359,27 +373,28 @@ class Predictor:
             cv = [(train_iloc, test_iloc)]
         else:
             raise ValueError("kind must be 'CV' or 'test'.")
-        cv_results = cross_validate(
-            clf,
-            X,
-            y,
-            scoring=scoring,
-            cv=cv,
-            n_jobs=n_jobs,
-            return_estimator=True,
-            return_indices=False,
-        )
-        scores_data = {
-            k.lstrip("test_"): v for k, v in cv_results.items() if k.startswith("test_")
-        }
+        estimators = []
+        scores_data = {score_name: [] for score_name in scoring}
+        scores_data["train_class_0"] = []
+        scores_data["train_class_1"] = []
+        scores_data["test_class_0"] = []
+        scores_data["test_class_1"] = []
         for train_indices, test_indices in cv:
+            X_train, X_test = X.iloc[train_indices], X.iloc[test_indices]
             y_train, y_test = y.iloc[train_indices], y.iloc[test_indices]
+            clf_clone = clone(clf)
+            clf_clone.fit(X_train, y_train, eval_set=(X_test, y_test))  # type: ignore
+            estimators.append(clf_clone)
+            for score_name in scoring:
+                scorer = get_scorer(score_name)
+                score = scorer(clf_clone, X_test, y_test)
+                scores_data[score_name].append(score)
             train_class_counts = y_train.value_counts()
             test_class_counts = y_test.value_counts()
-            scores_data["train_class_0"] = train_class_counts.get(0, 0)
-            scores_data["train_class_1"] = train_class_counts.get(1, 0)
-            scores_data["test_class_0"] = test_class_counts.get(0, 0)
-            scores_data["test_class_1"] = test_class_counts.get(1, 0)
+            scores_data["train_class_0"].append(train_class_counts.get(0, 0))
+            scores_data["train_class_1"].append(train_class_counts.get(1, 0))
+            scores_data["test_class_0"].append(test_class_counts.get(0, 0))
+            scores_data["test_class_1"].append(test_class_counts.get(1, 0))
         scores_df = pd.DataFrame(scores_data)
         pindex = self.phenotype.pindex
         findex = self.feature.findex
@@ -388,7 +403,7 @@ class Predictor:
             findex=findex,
             kind=kind,
             scores=scores_df,
-            estimators=cv_results["estimator"],
+            estimators=estimators,
         )
         return scores
 

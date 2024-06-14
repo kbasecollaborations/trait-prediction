@@ -51,11 +51,11 @@ def test_feature_var(leaf_feature):
     )
 
 
-@pytest.mark.parametrize("method", ["numpy", "numba", "numba_parallel"])
-def test_feature_correlation(method, leaf_feature):
+@pytest.mark.parametrize("parallel", [True, False])
+def test_feature_correlation(parallel, leaf_feature):
     feature = leaf_feature
     new_feature_data, corr_dict = Feature.remove_features_with_high_correlation(
-        feature.feature_data, threshold=0.5, method=method
+        feature.feature_data, threshold=0.5, parallel=parallel
     )
     assert len(corr_dict) >= 1
     assert new_feature_data.shape[1] < feature.feature_data.shape[1]

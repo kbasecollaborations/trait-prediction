@@ -3,7 +3,7 @@ selection_function: "score:chi2" # or "reduction:PCA"
 n_feature_selection: 1000
 random_state: 42
 variance_threshold: 0.01
-correlation_threshold: false
+correlation_threshold: 0.95
 sampling_type: "random"
 imbalance_correction: null
 test_size: 0.3
@@ -22,6 +22,10 @@ scoring:
     "roc_auc",
     "matthews_corrcoef",
   ]
-log_models: false
+log_models: "best"
+classifier: "catboost"
 classifier_kwargs:
+  eval_metric: "BalancedAccuracy" # "Accuracy" / "LogLoss" / "MCC"
+  od_type: "IncToDec"
+  od_wait: 20
   task_type: "CPU"

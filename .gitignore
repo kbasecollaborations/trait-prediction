@@ -50,6 +50,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+.ruff_cache/
 
 # Translations
 *.mo
@@ -169,7 +170,7 @@ cython_debug/
 .stignore
 
 # Data
-./data/
+/data/
 *.pkl
 catboost_info/
 
@@ -177,3 +178,6 @@ catboost_info/
 .devenv*
 devenv.local.nix
 .direnv/
+
+# Runs
+runs/

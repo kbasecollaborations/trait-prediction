@@ -83,6 +83,28 @@ class PhenotypeSet(Set[Phenotype]):
             phenotypes.append(Phenotype.read_data(pinput))
         return cls(phenotypes)
 
+    @classmethod
+    def merge_data(
+        cls, pinput_tuples: list[tuple[PhenotypeInput, ...]]
+    ) -> "PhenotypeSet":
+        """
+        Merge grouped PhenotypeInput objects and return a PhenotypeSet object.
+
+        Parameters
+        ---------
+        pinput_tuples : list[tuple[PhenotypeInput, ...]]
+            List of tuples containing multiple PhenotypeInput objects.
+
+        Returns
+        ------
+        "PhenotypeSet"
+            PhenotypeSet object containing the merged phenotype data.
+        """
+        phenotypes = []
+        for pinput_tuple in pinput_tuples:
+            phenotypes.append(Phenotype.merge_data(pinput_tuple))
+        return cls(phenotypes)
+
     def limit(self, limit: int) -> "PhenotypeSet":
         """
         Create a new PhenotypeSet object with a limited number of phenotypes.

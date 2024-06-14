@@ -1,12 +1,11 @@
 from trait_prediction.pipeline import TrainingPipeline
 
-from .conftest import make_classifier
-
 
 def test_training_pipeline_init(
     default_configset,
     leaf_phenotype_pinputs,
     leaf_feature_finputs,
+    classifier_factory,
     tmp_path,
     random_state,
 ):
@@ -16,7 +15,13 @@ def test_training_pipeline_init(
     output_dir = tmp_path
     n_cpus = 2
     pipeline = TrainingPipeline(
-        configset, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
+        configset,
+        pinputs,
+        finputs,
+        classifier_factory,
+        output_dir,
+        n_cpus,
+        random_state,
     )
     assert pipeline.experimentset.experimentset_dir.is_dir()
     assert pipeline.experimentset.experimentset_dir in list(tmp_path.iterdir())
