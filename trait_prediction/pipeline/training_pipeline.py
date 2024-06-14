@@ -390,7 +390,7 @@ class TrainingPipeline:
         # Split the data into training and testing sets
         if config.cross_validation:
             predictor.split_data_cv(n_splits=config.n_splits, stratify=True)
-            score = predictor.get_score(kind="CV", n_jobs=1, scoring=config.scoring)
+            score = predictor.get_score(kind="CV", scoring=config.scoring)
         else:
             predictor.split_data(
                 sampling_type=config.sampling_type,
@@ -398,7 +398,7 @@ class TrainingPipeline:
                 imbalance_correction=config.imbalance_correction,
                 stratify=True,
             )
-            score = predictor.get_score(kind="test", n_jobs=1, scoring=config.scoring)
+            score = predictor.get_score(kind="test", scoring=config.scoring)
         task_logger.info("Data split and scored")
         # Log the training data
         experiment_result.log_data(predictor)
