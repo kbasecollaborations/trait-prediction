@@ -296,7 +296,9 @@ class Predictor:
         if self.training_data is not None:
             X_train = self.training_data.X_train
             y_train = self.training_data.y_train
-            self.classifier.fit(X_train, y_train)
+            X_test = self.training_data.X_test
+            y_test = self.training_data.y_test
+            self.classifier.fit(X_train, y_train, eval_set=(X_test, y_test))
         else:
             raise ValueError("Data has not been prepared. Call `split_data` first.")
 
