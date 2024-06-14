@@ -23,5 +23,6 @@ scoring:
     "matthews_corrcoef",
   ]
 log_models: false
+classifier: "catboost"
 classifier_kwargs:
   task_type: "CPU"
