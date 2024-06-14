@@ -361,8 +361,8 @@ class TrainingPipeline:
             )
         )
         task_logger.info("Features selected")
-        phenotype_train = Phenotype(phenotype_data, phenotype.pindex)
-        feature_train = Feature(feature_data, new_findex)
+        phenotype_selected = Phenotype(phenotype_data, phenotype.pindex)
+        feature_selected = Feature(feature_data, new_findex)
         # Log the preprocessing data
         experiment_result.log_preprocessing_data(
             low_var_features,
@@ -383,7 +383,9 @@ class TrainingPipeline:
         classifier = make_classifier(
             random_state, categorical_feature_names, **config.classifier_kwargs
         )
-        predictor = Predictor(phenotype_train, feature_train, classifier, random_state)
+        predictor = Predictor(
+            phenotype_selected, feature_selected, classifier, random_state
+        )
         task_logger.info("Predictor created")
         # Split the data into training and testing sets
         if config.cross_validation:
