@@ -240,10 +240,16 @@ def make_classifier(random_state, categorical_feature_names, **kwargs):
 
 
 @pytest.fixture(scope="function")
+def classifier_factory(random_state):
+    return {"catboost": make_classifier}
+
+
+@pytest.fixture(scope="function")
 def leaf_pipeline(
     default_configset,
     leaf_phenotype_pinputs,
     leaf_feature_finputs,
+    classifier_factory,
     tmp_path,
     random_state,
 ):
@@ -253,6 +259,12 @@ def leaf_pipeline(
     output_dir = tmp_path
     n_cpus = 2
     pipeline = TrainingPipeline(
-        configset, pinputs, finputs, make_classifier, output_dir, n_cpus, random_state
+        configset,
+        pinputs,
+        finputs,
+        classifier_factory,
+        output_dir,
+        n_cpus,
+        random_state,
     )
     return pipeline
