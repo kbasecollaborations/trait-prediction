@@ -25,4 +25,7 @@ scoring:
 log_models: false
 classifier: "catboost"
 classifier_kwargs:
+  eval_metric: "BalancedAccuracy" # "Accuracy" / "LogLoss" / "MCC"
+  od_type: "IncToDec"
+  od_wait: 20
   task_type: "CPU"
