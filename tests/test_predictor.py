@@ -71,7 +71,7 @@ def test_predictor_fit_predict(leaf_predictor):
 def test_predictor_get_score(leaf_predictor):
     predictor = leaf_predictor
     predictor.split_data(sampling_type="random", imbalance_correction=None)
-    score = predictor.get_score(kind="test", n_jobs=1)
+    score = predictor.get_score(kind="test")
     assert len(score.estimators) == 1
     assert score.scores.shape[0] == 1
 
@@ -79,6 +79,6 @@ def test_predictor_get_score(leaf_predictor):
 def test_predictor_get_score_cv(leaf_predictor):
     predictor = leaf_predictor
     predictor.split_data_cv(n_splits=5, stratify=True)
-    score = predictor.get_score(kind="CV", n_jobs=1)
+    score = predictor.get_score(kind="CV")
     assert len(score.estimators) == 5
     assert score.scores.shape[0] == 5

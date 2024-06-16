@@ -330,7 +330,6 @@ class Predictor:
     def get_score(
         self,
         kind: str = "CV",
-        n_jobs: int = -1,
         scoring: Iterable[str] = (
             "accuracy",
             "balanced_accuracy",
