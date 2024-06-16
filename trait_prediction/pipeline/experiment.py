@@ -389,6 +389,15 @@ class Experiment(Set[ExperimentResult]):
 
 
 class ExperimentSet(Set[Experiment]):
+    """The ExperimentSet class represents a set of experiments.
+
+    Attributes
+    ----------
+    _names : The allowed names for the experiment set
+    experimentset_dir : The directory where the experiment set is stored
+    metadata : The metadata of the experiment set
+    """
+
     _names = NAMES
 
     def __init__(self, experimentset_dir: Path):
