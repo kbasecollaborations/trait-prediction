@@ -50,8 +50,6 @@ class TaskData:
         The dictionary that contains functions to create a classifier.
     output_dir : Path
         The output directory.
-    random_state : int
-        The random state.
     n_tasks : int
         The number of tasks.
     """
@@ -62,7 +60,6 @@ class TaskData:
     config: Config
     classifier_factory: dict[str, ClassifierType]
     output_dir: Path
-    random_state: int
     n_tasks: int = 0
 
     def get_metadata(self) -> dict:
@@ -85,7 +82,6 @@ class TaskData:
             },
             "experiment": str(self.experiment.experiment_dir),
             "config": self.config.model_dump(),
-            "random_state": self.random_state,
         }
         return metadata
 
@@ -99,7 +95,6 @@ class TrainingPipeline:
     classifier_factory : The dictionary that contains functions to create a classifier
     output_dir : The output directory
     n_cpus : The number of processors to use for training
-    random_state : The random state
     experimentset : The experiment set object
     dataset : The dataset object
     """
@@ -112,7 +107,6 @@ class TrainingPipeline:
         classifier_factory: dict[str, ClassifierType],
         output_dir: Path,
         n_cpus: int,
-        random_state: int,
         resume: bool = False,
     ):
         """The TrainingPipeline class.
@@ -131,8 +125,6 @@ class TrainingPipeline:
             The output directory.
         n_cpus : int
             The number of processors to use for training.
-        random_state : int
-            The random state.
         resume : bool
             Whether to resume the pipeline.
         """
@@ -141,7 +133,6 @@ class TrainingPipeline:
         self.classifier_factory = classifier_factory
         self.output_dir = output_dir
         self.n_cpus = n_cpus
-        self.random_state = random_state
         self.resume = resume
         self.experimentset = ExperimentSet.initialize(
             self.output_dir, self.configset.config_set, sep="_", resume=self.resume
@@ -195,7 +186,6 @@ class TrainingPipeline:
         metadata = {
             "configset": self.configset.config_set,
             "n_cpus": self.n_cpus,
-            "random_state": self.random_state,
             "phenotypes": [
                 {"name": p.pindex.name, "category": p.pindex.category}
                 for p in self.dataset.phenotype_set
@@ -360,7 +350,7 @@ class TrainingPipeline:
         config = task_data.config
         classifier_factory = task_data.classifier_factory
         make_classifier = classifier_factory[config.classifier]
-        random_state = task_data.random_state
+        random_state = task_data.config.random_state
         # Log the metadata
         task_logger.info("Task setup successfully. Logging metadata")
         experiment_result.log_metadata(metadata)
@@ -471,7 +461,6 @@ class TrainingPipeline:
                         config=experiment.config,
                         classifier_factory=self.classifier_factory,
                         output_dir=self.output_dir,
-                        random_state=self.random_state,
                     )
                     tasks.append(task)
         for task in tasks:
