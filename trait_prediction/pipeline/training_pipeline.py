@@ -120,7 +120,9 @@ class TrainingPipeline:
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
-        self.experimentset = ExperimentSet.initialize(self.output_dir, sep="_")
+        self.experimentset = ExperimentSet.initialize(
+            self.output_dir, self.configset.config_set, sep="_"
+        )
         log_file = self.experimentset.experimentset_dir / "experimentset.log"
         logger_file.add(
             log_file,
@@ -320,7 +322,8 @@ class TrainingPipeline:
             The task data.
         """
         experiment = task_data.experiment
-        experiment_result = experiment.create_result()
+        metadata = task_data.get_metadata()
+        experiment_result = experiment.create_result(metadata)
         task_logger = logger_file.bind(
             experiment=experiment.experiment_dir.name,
             run=experiment_result.run_dir.name,
@@ -337,7 +340,6 @@ class TrainingPipeline:
         random_state = task_data.random_state
         # Log the metadata
         task_logger.info("Task setup successfully. Logging metadata")
-        metadata = task_data.get_metadata()
         experiment_result.log_metadata(metadata)
         ftype = feature.findex.ftype
         feature_data = feature.feature_data

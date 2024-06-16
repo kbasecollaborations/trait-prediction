@@ -1,6 +1,7 @@
 """Module that defines the Experiment class"""
 
 import gzip
+import hashlib
 import json
 import random
 from collections.abc import Set
@@ -16,6 +17,36 @@ from .config import Config, ConfigSet
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 NAMES = json.loads((DATA_DIR / "names.json").read_text())
+
+
+def make_serializable(data):
+    if isinstance(data, set):
+        return list(data)
+    elif isinstance(data, dict):
+        return {k: make_serializable(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [make_serializable(item) for item in data]
+    else:
+        return data
+
+
+def seed_from_dict(d: dict) -> int:
+    """Generate a seed from a dictionary.
+
+    Parameters
+    ----------
+    d : dict
+        The dictionary.
+
+    Returns
+    -------
+    int
+        The seed.
+    """
+    # Convert set to list
+    d_serializable = make_serializable(d)
+    d_str = json.dumps(d_serializable, indent=4, sort_keys=True)
+    return int(hashlib.sha256(d_str.encode()).hexdigest(), 16) % (2**32)
 
 
 @dataclass
@@ -52,8 +83,9 @@ class ExperimentResult:
         The files of the run.
     """
 
-    def __init__(self, run_dir: Path):
+    def __init__(self, run_dir: Path, resume: bool = False):
         self.run_dir = run_dir
+        self.resume = resume
         if not self.run_dir.exists():
             self.run_dir.mkdir(parents=True)
         self.metadata = {}
@@ -63,13 +95,15 @@ class ExperimentResult:
         return hash(self.run_dir)
 
     @staticmethod
-    def generate_run_id(existing_dirs: list[str], length: int = 12) -> str:
+    def generate_run_id(existing_dirs: list[str], seed: int, length: int = 12) -> str:
         """Generate a unique run ID.
 
         Parameters
         ----------
         existing_dirs : list[str]
             The list of existing directories.
+        seed : int
+            The seed for the random number generator.
         length : int
             The length of the run ID.
             Default is 12.
@@ -79,35 +113,46 @@ class ExperimentResult:
         str
             The run ID.
         """
+        local_rng = random.Random(seed)
         alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
         if existing_dirs:
             run_dir = existing_dirs[0]
             while run_dir in existing_dirs:
-                run_dir = "".join(random.choices(alphabet, k=length))
+                run_dir = "".join(local_rng.choices(alphabet, k=length))
         else:
-            run_dir = "".join(random.choices(alphabet, k=length))
+            run_dir = "".join(local_rng.choices(alphabet, k=length))
         return run_dir
 
     @classmethod
-    def initialize(cls, base_dir: Path, length: int = 12) -> "ExperimentResult":
+    def initialize(
+        cls, base_dir: Path, seed: int, length: int = 12, resume: bool = False
+    ) -> "ExperimentResult":
         """Initialize a new ExperimentResult.
 
         Parameters
         ----------
         base_dir : Path
             The base directory.
+        seed : int
+            The seed for the random number generator.
         length : int
             The length of the run ID.
+        resume : bool
+            Whether to resume the experiment.
+            Default is False.
 
         Returns
         -------
         "ExperimentResult"
             The ExperimentResult object.
         """
-        existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
-        run_dir = base_dir / cls.generate_run_id(existing_dirs, length)
+        if resume:
+            existing_dirs = []
+        else:
+            existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
+        run_dir = base_dir / cls.generate_run_id(existing_dirs, seed, length)
         run_dir.mkdir(parents=True, exist_ok=True)
-        return cls(run_dir)
+        return cls(run_dir, resume=resume)
 
     def parse(self):
         """Parse the contents run directory."""
@@ -285,8 +330,11 @@ class Experiment(Set[ExperimentResult]):
 
     _names = NAMES
 
-    def __init__(self, experiment_dir: Path, config: Config | None = None):
+    def __init__(
+        self, experiment_dir: Path, config: Config | None = None, resume: bool = False
+    ):
         self.experiment_dir = experiment_dir
+        self.resume = resume
         if not self.experiment_dir.exists():
             self.experiment_dir.mkdir(parents=True)
         self._results = set()
@@ -317,13 +365,17 @@ class Experiment(Set[ExperimentResult]):
         self._config = config
 
     @classmethod
-    def generate_experiment_id(cls, existing_dirs: list[str], sep: str) -> str:
+    def generate_experiment_id(
+        cls, existing_dirs: list[str], seed: int, sep: str
+    ) -> str:
         """Generate a unique experiment ID.
 
         Parameters
         ----------
         existing_dirs : list[str]
             The list of existing directories.
+        seed : int
+            The seed for the random number generator.
         sep : str
             The separator between the left and right names.
 
@@ -332,15 +384,16 @@ class Experiment(Set[ExperimentResult]):
         str
             The experiment ID.
         """
+        local_rng = random.Random(seed)
         if existing_dirs:
             experiment_dir = existing_dirs[0]
             while experiment_dir in existing_dirs:
-                left_name = random.choice(cls._names["left"])
-                right_name = random.choice(cls._names["right"])
+                left_name = local_rng.choice(cls._names["left"])
+                right_name = local_rng.choice(cls._names["right"])
                 experiment_dir = f"{left_name}{sep}{right_name}"
         else:
-            left_name = random.choice(cls._names["left"])
-            right_name = random.choice(cls._names["right"])
+            left_name = local_rng.choice(cls._names["left"])
+            right_name = local_rng.choice(cls._names["right"])
             experiment_dir = f"{left_name}{sep}{right_name}"
         return experiment_dir
 
@@ -348,7 +401,9 @@ class Experiment(Set[ExperimentResult]):
     def initialize(
         cls,
         base_dir: Path,
+        seed: int,
         sep: str,
+        resume: bool = False,
     ) -> "Experiment":
         """Initialize a new Experiment.
 
@@ -356,21 +411,31 @@ class Experiment(Set[ExperimentResult]):
         ----------
         base_dir : Path
             The base directory.
+        seed : int
+            The seed for the random number generator.
         sep : str
             The separator between the left and right names.
+        resume : bool
+            Whether to resume the experiment.
 
         Returns
         -------
         "Experiment"
             The Experiment object.
         """
-        existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
-        experiment_dir = base_dir / cls.generate_experiment_id(existing_dirs, sep)
+        if resume:
+            existing_dirs = []
+        else:
+            existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
+        experiment_dir = base_dir / cls.generate_experiment_id(existing_dirs, seed, sep)
         experiment_dir.mkdir(parents=True, exist_ok=True)
-        return cls(experiment_dir)
+        return cls(experiment_dir, resume=resume)
 
-    def create_result(self) -> ExperimentResult:
-        return ExperimentResult.initialize(self.experiment_dir)
+    def create_result(self, metadata: dict) -> ExperimentResult:
+        seed = seed_from_dict(metadata)
+        return ExperimentResult.initialize(
+            self.experiment_dir, seed, resume=self.resume
+        )
 
     def parse(self):
         """Parse the contents of the experiment directory."""
@@ -400,8 +465,9 @@ class ExperimentSet(Set[Experiment]):
 
     _names = NAMES
 
-    def __init__(self, experimentset_dir: Path):
+    def __init__(self, experimentset_dir: Path, resume: bool = False):
         self.experimentset_dir = experimentset_dir
+        self.resume = resume
         if not self.experimentset_dir.exists():
             self.experimentset_dir.mkdir(parents=True)
         self._experiments = set()
@@ -422,13 +488,17 @@ class ExperimentSet(Set[Experiment]):
         return item in self._experiments
 
     @classmethod
-    def generate_experimentset_id(cls, existing_dirs: list[str], sep: str) -> str:
+    def generate_experimentset_id(
+        cls, existing_dirs: list[str], seed: int, sep: str
+    ) -> str:
         """Generate a unique experimentset ID.
 
         Parameters
         ----------
         existing_dirs : list[str]
             The list of existing directories.
+        seed : int
+            The seed for the random number generator.
         sep : str
             The separator between the left and right names.
 
@@ -437,17 +507,18 @@ class ExperimentSet(Set[Experiment]):
         str
             The experimentset ID.
         """
+        local_rng = random.Random(seed)
         if existing_dirs:
             experimentset_dir = existing_dirs[0]
             while experimentset_dir in existing_dirs:
-                left_name = random.choice(cls._names["left"])
-                middle_name = random.choice(cls._names["left"])
-                right_name = random.choice(cls._names["right"])
+                left_name = local_rng.choice(cls._names["left"])
+                middle_name = local_rng.choice(cls._names["left"])
+                right_name = local_rng.choice(cls._names["right"])
                 experimentset_dir = f"{left_name}{sep}{middle_name}{sep}{right_name}"
         else:
-            left_name = random.choice(cls._names["left"])
-            middle_name = random.choice(cls._names["left"])
-            right_name = random.choice(cls._names["right"])
+            left_name = local_rng.choice(cls._names["left"])
+            middle_name = local_rng.choice(cls._names["left"])
+            right_name = local_rng.choice(cls._names["right"])
             experimentset_dir = f"{left_name}{sep}{middle_name}{sep}{right_name}"
         return experimentset_dir
 
@@ -455,7 +526,9 @@ class ExperimentSet(Set[Experiment]):
     def initialize(
         cls,
         base_dir: Path,
+        configset_metadata: dict,
         sep: str,
+        resume: bool = False,
     ) -> "ExperimentSet":
         """Initialize a new ExperimentSet.
 
@@ -463,22 +536,35 @@ class ExperimentSet(Set[Experiment]):
         ----------
         base_dir : Path
             The base directory.
+        configset_metadata : dict
+            The configuration set metadata.
         sep : str
             The separator between the left and right names.
+        resume : bool
+            Whether to resume the experiment.
+            Default is False.
 
         Returns
         -------
         "ExperimentSet"
             The ExperimentSet object.
         """
-        existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
-        experimentset_dir = base_dir / cls.generate_experimentset_id(existing_dirs, sep)
+        seed = seed_from_dict(configset_metadata)
+        if resume:
+            existing_dirs = []
+        else:
+            existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
+        experimentset_dir = base_dir / cls.generate_experimentset_id(
+            existing_dirs, seed, sep
+        )
         experimentset_dir.mkdir(parents=True, exist_ok=True)
-        return cls(experimentset_dir)
+        return cls(experimentset_dir, resume)
 
-    def create_experiment(self) -> Experiment:
+    def create_experiment(self, seed: int) -> Experiment:
         """Create a new experiment."""
-        return Experiment.initialize(self.experimentset_dir, sep="_")
+        return Experiment.initialize(
+            self.experimentset_dir, seed, resume=self.resume, sep="_"
+        )
 
     def create_experiments(
         self, config_set: ConfigSet, common_metadata: dict
@@ -499,12 +585,13 @@ class ExperimentSet(Set[Experiment]):
         """
         experiments = set()
         for config in config_set.configs:
-            experiment = self.create_experiment()
-            experiment.config = config
             metadata = {
                 **common_metadata,
                 "config": config.model_dump(),
             }
+            seed = seed_from_dict(metadata)
+            experiment = self.create_experiment(seed)
+            experiment.config = config
             experiment.log_metadata(metadata)
             self._experiments.add(experiment)
             experiments.add(experiment)
