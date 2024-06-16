@@ -113,15 +113,38 @@ class TrainingPipeline:
         output_dir: Path,
         n_cpus: int,
         random_state: int,
+        resume: bool = False,
     ):
+        """The TrainingPipeline class.
+
+        Parameters
+        ----------
+        configset : ConfigSet
+            The configuration set object.
+        pinputs : list[PhenotypeInput]
+            The list of phenotype inputs.
+        finputs : list[FeatureInput]
+            The list of feature inputs.
+        classifier_factory : dict[str, ClassifierType]
+            The dictionary that contains functions to create a classifier.
+        output_dir : Path
+            The output directory.
+        n_cpus : int
+            The number of processors to use for training.
+        random_state : int
+            The random state.
+        resume : bool
+            Whether to resume the pipeline.
+        """
         logger_file.enable("trait_prediction")
         self.configset = configset
         self.classifier_factory = classifier_factory
         self.output_dir = output_dir
         self.n_cpus = n_cpus
         self.random_state = random_state
+        self.resume = resume
         self.experimentset = ExperimentSet.initialize(
-            self.output_dir, self.configset.config_set, sep="_"
+            self.output_dir, self.configset.config_set, sep="_", resume=self.resume
         )
         log_file = self.experimentset.experimentset_dir / "experimentset.log"
         logger_file.add(
