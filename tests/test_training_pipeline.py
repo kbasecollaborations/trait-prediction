@@ -7,7 +7,6 @@ def test_training_pipeline_init(
     leaf_feature_finputs,
     classifier_factory,
     tmp_path,
-    random_state,
 ):
     configset = default_configset
     pinputs = leaf_phenotype_pinputs
@@ -21,7 +20,6 @@ def test_training_pipeline_init(
         classifier_factory,
         output_dir,
         n_cpus,
-        random_state,
     )
     assert pipeline.experimentset.experimentset_dir.is_dir()
     assert pipeline.experimentset.experimentset_dir in list(tmp_path.iterdir())

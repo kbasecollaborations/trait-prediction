@@ -251,7 +251,6 @@ def leaf_pipeline(
     leaf_feature_finputs,
     classifier_factory,
     tmp_path,
-    random_state,
 ):
     configset = default_configset
     pinputs = leaf_phenotype_pinputs
@@ -265,6 +264,5 @@ def leaf_pipeline(
         classifier_factory,
         output_dir,
         n_cpus,
-        random_state,
     )
     return pipeline
