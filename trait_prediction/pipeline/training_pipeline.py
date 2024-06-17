@@ -176,8 +176,8 @@ class TrainingPipeline:
             f"Pipeline fully initialized at {self.experimentset.experimentset_dir}"
         )
         for experiment in self.experimentset:
-            if experiment.config.classifier not in self.classifier_factory:
-                error_str = f"Classifier {experiment.config.classifier} not found in the classifier factory"
+            if experiment.config.classifier.name not in self.classifier_factory:
+                error_str = f"Classifier {experiment.config.classifier.name} not found in the classifier factory"
                 logger_file.error(error_str)
                 logger_std.error(error_str)
                 raise ValueError(error_str)
@@ -349,7 +349,7 @@ class TrainingPipeline:
         feature = task_data.feature
         config = task_data.config
         classifier_factory = task_data.classifier_factory
-        make_classifier = classifier_factory[config.classifier]
+        make_classifier = classifier_factory[config.classifier.name]
         random_state = task_data.config.random_state
         # Log the metadata
         task_logger.info("Task setup successfully. Logging metadata")
@@ -396,7 +396,7 @@ class TrainingPipeline:
         else:
             categorical_feature_names = None
         classifier = make_classifier(
-            random_state, categorical_feature_names, **config.classifier_kwargs
+            random_state, categorical_feature_names, **config.classifier.kwargs
         )
         predictor = Predictor(
             phenotype_selected, feature_selected, classifier, random_state

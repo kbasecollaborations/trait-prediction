@@ -26,12 +26,18 @@ SelectionFunctionOpts = Literal[
     "reduction:NMF",
 ]
 
-ClassifierOpts = Literal[
-    "catboost",
-    "nearest_neighbor",
-    "identity",
-    "bernoulli",
-]
+
+class ClassifierOpts(BaseModel):
+    """The Config class defines the classifier options for the pipeline.
+
+    Attributes
+    ----------
+    name : The name of the classifier
+    kwargs : The keyword arguments for the classifier
+    """
+
+    name: Literal["catboost", "nearest_neighbor", "identity", "bernoulli"]
+    kwargs: dict[str, Any]
 
 
 class Config(BaseModel):
@@ -54,8 +60,7 @@ class Config(BaseModel):
     shap_max_display : The maximum number of features to display in SHAP plots
     scoring : The scoring metrics to calculate
     log_models : Whether to save the estimators (None, all, best)
-    classifier : The classifier to use
-    classifier_kwargs : The keyword arguments for the classifier
+    classifier : The classifier options (name, kwargs)
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -75,7 +80,6 @@ class Config(BaseModel):
     scoring: tuple[str, ...]
     log_models: Literal["all", "best"] | None
     classifier: ClassifierOpts
-    classifier_kwargs: dict[str, Any]
 
     def __hash__(self):
         model_dict = self.model_dump()
@@ -208,7 +212,12 @@ class ConfigSet(Set[Config]):
                 if key not in merged_config:
                     merged_config[key] = set()
                 if isinstance(value, dict):
-                    new_value = tuple([(k, v) for k, v in value.items()])
+                    new_value = tuple(
+                        [
+                            (k, tuple(v.items())) if isinstance(v, dict) else (k, v)
+                            for k, v in value.items()
+                        ]
+                    )
                 else:
                     new_value = value
                 merged_config[key].add(new_value)
