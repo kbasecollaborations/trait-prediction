@@ -37,3 +37,11 @@ def test_configset_configset(default_configset):
     config_set = configset.config_set
     assert len(config_set["selection_function"]) == 2
     assert len(config_set["random_state"]) == 2
+
+
+def test_configset_classifiers(default_config_path, default_config):
+    config_set_path = default_config_path / "config_set_classifiers.yaml"
+    base_config = default_config
+    config_set = ConfigSet.create_configset(base_config, config_set_path)
+    print(config_set.config_set)
+    assert len(config_set) == 2
