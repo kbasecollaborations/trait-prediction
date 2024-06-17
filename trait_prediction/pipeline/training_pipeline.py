@@ -467,7 +467,7 @@ class TrainingPipeline:
             task.n_tasks = len(tasks)
         logger_file.info(f"Generated {len(tasks)} tasks")
         logger_std.info(f"Generated {len(tasks)} tasks")
-        with mp.Pool(self.n_cpus) as pool:
+        with mp.get_context("spawn").Pool(self.n_cpus) as pool:
             pool.starmap(self._run_task, [(task, progress, lock) for task in tasks])
         logger_file.info(
             f"Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
