@@ -309,6 +309,26 @@ class ExperimentResult:
             )
             importance_df.to_csv(shap_features_file, index=True, sep=",")
 
+    def is_task_completed(self) -> bool:
+        """Check if the task is complete.
+
+        Returns
+        -------
+        bool
+            True if the task is complete, False otherwise.
+        """
+        metadata_file = self.run_dir / "metadata.yaml"
+        data_dir = self.run_dir / "data"
+        metrics_dir = self.run_dir / "metrics"
+        plots_dir = self.run_dir / "plots"
+        is_completed = (
+            metadata_file.exists()
+            and data_dir.exists()
+            and metrics_dir.exists()
+            and plots_dir.exists()
+        )
+        return is_completed
+
 
 class Experiment(Set[ExperimentResult]):
     """The Experiment class represents an experiment.

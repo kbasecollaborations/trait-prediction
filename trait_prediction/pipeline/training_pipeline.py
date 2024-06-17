@@ -351,6 +351,19 @@ class TrainingPipeline:
         classifier_factory = task_data.classifier_factory
         make_classifier = classifier_factory[config.classifier.name]
         random_state = task_data.config.random_state
+        # If data, metrics and plots are already logged, skip the task
+        if experiment_result.resume:
+            if experiment_result.is_task_completed():
+                lock.acquire()
+                progress.value += 1
+                task_logger.info(
+                    f"Skipping task. Progress: {progress.value} of {task_data.n_tasks}"
+                )
+                task_logger_std.info(
+                    f"Skipping task. Progress: {progress.value} of {task_data.n_tasks}",
+                )
+                lock.release()
+                return None
         # Log the metadata
         task_logger.info("Task setup successfully. Logging metadata")
         experiment_result.log_metadata(metadata)
