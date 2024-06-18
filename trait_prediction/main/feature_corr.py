@@ -155,7 +155,10 @@ class GraphCorrelationFilter:
             self._graph.degree(self._graph.nodes), key=lambda v: v[1], reverse=True
         )
         # Do not track 0-degree nodes
-        degree_list: list[list[int]] = [[] for _ in range(degrees[0][1])]  # type: ignore
+        try:
+            degree_list: list[list[int]] = [[] for _ in range(degrees[0][1])]  # type: ignore
+        except IndexError:
+            return []
         for node_name, deg in degrees:
             if deg == 0:
                 break
