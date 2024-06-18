@@ -137,6 +137,11 @@ class TrainingPipeline:
         self.experimentset = ExperimentSet.initialize(
             self.output_dir, self.configset.config_set, sep="_", resume=self.resume
         )
+        using_corrfilter = self.configset.config_set.get("correlation_threshold", None)
+        if any(i is not None for i in using_corrfilter):
+            self.context = "spawn"
+        else:
+            self.context = "fork"
         log_file = self.experimentset.experimentset_dir / "experimentset.log"
         logger_file.add(
             log_file,
@@ -144,6 +149,7 @@ class TrainingPipeline:
             filter=lambda record: "file" in record["extra"],
             mode="w",
             format="{time:YYYY-MM-DD HH:mm:ss} | {level} | Experiment:{extra[experiment]}, Run:{extra[run]} - {message}",
+            context=mp.get_context(self.context),
         )
         logger_std.add(
             sys.stdout,
@@ -156,6 +162,7 @@ class TrainingPipeline:
                 "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | "
                 "<yellow>Experiment:{extra[experiment]}, Run:{extra[run]}</yellow> - {message}"
             ),
+            context=mp.get_context(self.context),
         )
         logger_file.info(
             f"Initialized experimentset at {self.experimentset.experimentset_dir}"
@@ -480,7 +487,7 @@ class TrainingPipeline:
             task.n_tasks = len(tasks)
         logger_file.info(f"Generated {len(tasks)} tasks")
         logger_std.info(f"Generated {len(tasks)} tasks")
-        with mp.get_context("spawn").Pool(self.n_cpus) as pool:
+        with mp.get_context(self.context).Pool(self.n_cpus) as pool:
             pool.starmap(self._run_task, [(task, progress, lock) for task in tasks])
         logger_file.info(
             f"Pipeline completed. Completed tasks: {progress.value} of {len(tasks)}"
