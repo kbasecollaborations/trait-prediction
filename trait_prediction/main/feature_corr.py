@@ -4,7 +4,7 @@ from typing import Iterator
 
 import networkx as nx
 import numpy as np
-import polars as pl
+import pandas as pd
 from numba import njit, prange
 
 
@@ -79,25 +79,21 @@ def _argwhere(pc_mat: np.ndarray, threshold: float) -> np.ndarray:
 
 class GraphCorrelationFilter:
     def __init__(
-        self, df: pl.DataFrame, id_col: str, threshold: float, parallel: bool = False
+        self, df: pd.DataFrame, threshold: float, parallel: bool = False
     ) -> None:
         self._df = df
-        self._features = [col for col in df.columns if col != id_col]
-        self._graph = self._create_graph(df, id_col, threshold, parallel)
+        self._features = list(df.columns)
+        self._graph = self._create_graph(df, threshold, parallel)
         self._ready = True
 
     @staticmethod
-    def _create_graph(
-        df: pl.DataFrame, id_col: str, threshold: float, parallel: bool
-    ) -> nx.Graph:
+    def _create_graph(df: pd.DataFrame, threshold: float, parallel: bool) -> nx.Graph:
         """Create a graph from the given DataFrame using the Pearson correlation coefficient.
 
         Parameters
         ----------
-        df : pl.DataFrame
+        df : pd.DataFrame
             The DataFrame containing the data.
-        id_col : str
-            The column name of the ID column.
         threshold : float
             The threshold for the Pearson correlation coefficient.
         parallel : bool
@@ -112,9 +108,9 @@ class GraphCorrelationFilter:
             pcc_func = _pearson_correlation_coefficient_par
         else:
             pcc_func = _pearson_correlation_coefficient
-        pc_mat = pcc_func(df.drop(id_col).transpose().to_numpy())
-        assert pc_mat.shape[0] + 1 == len(df.columns)
-        assert pc_mat.shape[1] + 1 == len(df.columns)
+        pc_mat = pcc_func(df.transpose().to_numpy())
+        assert pc_mat.shape[0] == len(df.columns)
+        assert pc_mat.shape[1] == len(df.columns)
         graph = nx.Graph()
         for c in _argwhere(pc_mat, threshold):
             graph.add_edge(c[0], c[1])
@@ -182,14 +178,14 @@ class GraphCorrelationFilter:
                     degree_list[updated_degree - 1].append(entry)  # type: ignore
         self._ready = False
 
-    def remove_corr_cols(self) -> pl.DataFrame:
+    def remove_corr_cols(self) -> pd.DataFrame:
         """Remove the correlated columns from the DataFrame.
 
         Returns
         -------
-        pl.DataFrame
+        pd.DataFrame
             The DataFrame with the correlated columns removed.
         """
         self._check_ready()
         to_drop = [self._features[node] for node in self._redundant_nodes_iter()]
-        return self._df.drop(to_drop)
+        return self._df.drop(to_drop, axis=1)

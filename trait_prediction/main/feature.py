@@ -253,16 +253,15 @@ class Feature:
             Dictionary of the features with high correlation that were removed
         """
         # Get correlated columns
-        feature_pl = pl.from_pandas(feature_df, include_index=True)
         graph_corr = GraphCorrelationFilter(
-            feature_pl, id_col="genomeID", threshold=threshold, parallel=parallel
+            feature_df, threshold=threshold, parallel=parallel
         )
         # Find columns to drop
         corr_group_dict = graph_corr.find_corr_cols()
         # Drop the columns from the DataFrame
-        feature_pl_dropped = graph_corr.remove_corr_cols()
+        feature_df_dropped = graph_corr.remove_corr_cols()
         return (
-            feature_pl_dropped.to_pandas().set_index("genomeID"),
+            feature_df_dropped,
             corr_group_dict,
         )
 

@@ -1,14 +1,6 @@
 import pytest
 
-from trait_prediction.main import (
-    Feature,
-    FeatureIndex,
-    FeatureInput,
-    FeatureSet,
-    PhenotypeIndex,
-    PhenotypeInput,
-    PhenotypeSet,
-)
+from trait_prediction.main import Feature, FeatureIndex, FeatureInput, FeatureSet
 
 
 def test_feature_read_data(leaf_feature_folder):

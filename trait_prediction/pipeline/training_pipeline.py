@@ -139,7 +139,8 @@ class TrainingPipeline:
         )
         using_corrfilter = self.configset.config_set.get("correlation_threshold", None)
         if any(i is not None for i in using_corrfilter):
-            self.context = "spawn"
+            # NOTE: Change this back to "spawn" if using polars
+            self.context = "fork"
         else:
             self.context = "fork"
         log_file = self.experimentset.experimentset_dir / "experimentset.log"
