@@ -469,6 +469,8 @@ class Experiment(Set[ExperimentResult]):
         with open(self.experiment_dir / "metadata.yaml") as fid:
             self.metadata = yaml.safe_load(fid)
         for run_dir in self.experiment_dir.iterdir():
+            if not run_dir.is_dir():
+                continue
             run_result = ExperimentResult(run_dir)
             run_result.parse()
             self._results.add(run_result)
@@ -578,9 +580,11 @@ class ExperimentSet(Set[Experiment]):
 
     def parse(self):
         """Parse the contents of the experimentset directory."""
-        with open(self.experimentset_dir / "config_set.yaml") as fid:
-            self.metadata = yaml.safe_load(fid)
+        with open(self.experimentset_dir / "metadata.json") as fid:
+            self.metadata = json.load(fid)
         for experiment_dir in self.experimentset_dir.iterdir():
+            if not experiment_dir.is_dir():
+                continue
             experiment = Experiment(experiment_dir)
             experiment.parse()
             self._experiments.add(experiment)
