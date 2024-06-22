@@ -7,6 +7,7 @@ import random
 from collections.abc import Set
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 import pandas as pd
 import yaml
@@ -384,6 +385,12 @@ class Experiment(Set[ExperimentResult]):
         return hash(self.experiment_dir)
 
     @property
+    def results(self) -> Iterator[ExperimentResult]:
+        """Return an iterator over the results."""
+        for result in self._results:
+            yield result
+
+    @property
     def config(self) -> Config | None:
         return self._config
 
@@ -512,6 +519,12 @@ class ExperimentSet(Set[Experiment]):
 
     def __contains__(self, item):
         return item in self._experiments
+
+    @property
+    def experiments(self) -> Iterator[Experiment]:
+        """Return an iterator over the experiments."""
+        for experiment in self._experiments:
+            yield experiment
 
     @classmethod
     def initialize(
