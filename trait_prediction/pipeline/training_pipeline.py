@@ -406,14 +406,17 @@ class TrainingPipeline:
         phenotype_selected = Phenotype(phenotype_data, phenotype.pindex)
         feature_selected = Feature(feature_data, new_findex)
         # Log the preprocessing data
-        experiment_result.log_preprocessing_data(
-            low_var_features,
-            corr_group_dict,
-            low_score_features,
-            components_df,
-            feature_data,
-        )
-        task_logger.info("Preprocessing data logged")
+        if config.log_preprocessing_data:
+            experiment_result.log_preprocessing_data(
+                low_var_features,
+                corr_group_dict,
+                low_score_features,
+                components_df,
+                feature_data,
+            )
+            task_logger.info("Preprocessing data logged")
+        else:
+            task_logger.info("Preprocessing data not logged")
         # Create the predictor
         if ftype == "binary":
             categorical_feature_names = []
@@ -455,6 +458,8 @@ class TrainingPipeline:
                 score, subset=config.log_models, metric="balanced_accuracy"
             )
             task_logger.info("Models logged")
+        else:
+            task_logger.info("Models not logged")
         # Log the plots
         experiment_result.log_plots(score, feature_data, config)
         task_logger.info("Plots logged")

@@ -59,6 +59,7 @@ class Config(BaseModel):
     minor_class_sample_size_threshold : The threshold for the minimum number of samples for a minor class
     shap_max_display : The maximum number of features to display in SHAP plots
     scoring : The scoring metrics to calculate
+    log_preprocessing_data: Whether to save the preprocessed data
     log_models : Whether to save the estimators (None, all, best)
     classifier : The classifier options (name, kwargs)
     """
@@ -78,6 +79,7 @@ class Config(BaseModel):
     minor_class_sample_size_threshold: int = Field(gt=0)
     shap_max_display: int = Field(gt=0)
     scoring: tuple[str, ...]
+    log_preprocessing_data: bool
     log_models: Literal["all", "best"] | None
     classifier: ClassifierOpts
 
