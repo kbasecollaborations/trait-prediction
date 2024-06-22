@@ -240,6 +240,11 @@ class ExperimentResult:
         output_dir = self.run_dir / "data"
         output_dir.mkdir(parents=True, exist_ok=True)
         saved_data = False
+        # save the feature names
+        feature_names = predictor.feature.feature_data.columns
+        feature_names_file = output_dir / "feature_names.txt"
+        with open(feature_names_file, "w") as fid:
+            fid.write("\n".join(feature_names))
         # save the training data
         if predictor.training_data is not None:
             predictor.training_data.save_indices(output_dir)
@@ -249,7 +254,9 @@ class ExperimentResult:
             predictor.cv_data.save_indices(predictor.phenotype, output_dir)
             saved_data = True
         if saved_data is False:
-            raise ValueError("Neither Training data nor CV data set for the predictor")
+            raise ValueError(
+                "Neither Training data nor CV data were set for the predictor"
+            )
 
     def log_metrics(self, score: Score) -> None:
         """Save the metrics.
