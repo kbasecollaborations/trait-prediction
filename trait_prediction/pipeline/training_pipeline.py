@@ -135,7 +135,7 @@ class TrainingPipeline:
         self.n_cpus = n_cpus
         self.resume = resume
         self.experimentset = ExperimentSet.initialize(
-            self.output_dir, self.configset.config_set, sep="_", resume=self.resume
+            self.output_dir, sep="_", resume=self.resume
         )
         using_corrfilter = self.configset.config_set.get("correlation_threshold", None)
         if any(i is not None for i in using_corrfilter):

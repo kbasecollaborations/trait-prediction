@@ -478,12 +478,9 @@ class ExperimentSet(Set[Experiment]):
 
     Attributes
     ----------
-    _names : The allowed names for the experiment set
     experimentset_dir : The directory where the experiment set is stored
     metadata : The metadata of the experiment set
     """
-
-    _names = NAMES
 
     def __init__(self, experimentset_dir: Path, resume: bool = False):
         self.experimentset_dir = experimentset_dir
@@ -508,45 +505,9 @@ class ExperimentSet(Set[Experiment]):
         return item in self._experiments
 
     @classmethod
-    def generate_experimentset_id(
-        cls, existing_dirs: list[str], seed: int, sep: str
-    ) -> str:
-        """Generate a unique experimentset ID.
-
-        Parameters
-        ----------
-        existing_dirs : list[str]
-            The list of existing directories.
-        seed : int
-            The seed for the random number generator.
-        sep : str
-            The separator between the left and right names.
-
-        Returns
-        -------
-        str
-            The experimentset ID.
-        """
-        local_rng = random.Random(seed)
-        if existing_dirs:
-            experimentset_dir = existing_dirs[0]
-            while experimentset_dir in existing_dirs:
-                left_name = local_rng.choice(cls._names["left"])
-                middle_name = local_rng.choice(cls._names["left"])
-                right_name = local_rng.choice(cls._names["right"])
-                experimentset_dir = f"{left_name}{sep}{middle_name}{sep}{right_name}"
-        else:
-            left_name = local_rng.choice(cls._names["left"])
-            middle_name = local_rng.choice(cls._names["left"])
-            right_name = local_rng.choice(cls._names["right"])
-            experimentset_dir = f"{left_name}{sep}{middle_name}{sep}{right_name}"
-        return experimentset_dir
-
-    @classmethod
     def initialize(
         cls,
         base_dir: Path,
-        configset_metadata: dict,
         sep: str,
         resume: bool = False,
     ) -> "ExperimentSet":
@@ -556,8 +517,6 @@ class ExperimentSet(Set[Experiment]):
         ----------
         base_dir : Path
             The base directory.
-        configset_metadata : dict
-            The configuration set metadata.
         sep : str
             The separator between the left and right names.
         resume : bool
@@ -569,14 +528,7 @@ class ExperimentSet(Set[Experiment]):
         "ExperimentSet"
             The ExperimentSet object.
         """
-        seed = seed_from_dict(configset_metadata)
-        if resume:
-            existing_dirs = []
-        else:
-            existing_dirs = [d.name for d in base_dir.iterdir() if d.is_dir()]
-        experimentset_dir = base_dir / cls.generate_experimentset_id(
-            existing_dirs, seed, sep
-        )
+        experimentset_dir = base_dir
         experimentset_dir.mkdir(parents=True, exist_ok=True)
         return cls(experimentset_dir, resume)
 

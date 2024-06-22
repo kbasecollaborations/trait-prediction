@@ -22,7 +22,7 @@ def test_training_pipeline_init(
         n_cpus,
     )
     assert pipeline.experimentset.experimentset_dir.is_dir()
-    assert pipeline.experimentset.experimentset_dir in list(tmp_path.iterdir())
+    assert pipeline.experimentset.experimentset_dir == tmp_path
     assert (pipeline.experimentset.experimentset_dir / "experimentset.log").is_file()
     assert (pipeline.experimentset.experimentset_dir / "metadata.json").is_file()
     assert pipeline.dataset is not None

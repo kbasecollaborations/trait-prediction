@@ -25,28 +25,20 @@ def test_experimentresult_seed(tmp_path):
 
 
 def test_experimentset_initialization(tmp_path):
-    experimentset = ExperimentSet.initialize(
-        tmp_path, configset_metadata={"dataset": "leaf"}, sep="_"
-    )
+    experimentset = ExperimentSet.initialize(tmp_path, sep="_")
     assert experimentset.experimentset_dir.is_dir()
-    assert experimentset.experimentset_dir in list(tmp_path.iterdir())
+    assert experimentset.experimentset_dir == tmp_path
     assert experimentset.metadata == {}
 
 
 def test_experimentset_seed(tmp_path):
-    experimentset_1 = ExperimentSet.initialize(
-        tmp_path, configset_metadata={"dataset": "leaf"}, sep="_"
-    )
-    experimentset_2 = ExperimentSet.initialize(
-        tmp_path, configset_metadata={"dataset": "leaf"}, sep="_", resume=True
-    )
+    experimentset_1 = ExperimentSet.initialize(tmp_path, sep="_")
+    experimentset_2 = ExperimentSet.initialize(tmp_path, sep="_", resume=True)
     assert experimentset_1.experimentset_dir == experimentset_2.experimentset_dir
 
 
 def test_experimentset_create_experiments(tmp_path, default_configset):
-    experimentset = ExperimentSet.initialize(
-        tmp_path, configset_metadata={"dataset": "leaf"}, sep="_"
-    )
+    experimentset = ExperimentSet.initialize(tmp_path, sep="_")
     configset = default_configset
     common_metadata = {
         "dataset": "leaf",
