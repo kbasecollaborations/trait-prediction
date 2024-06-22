@@ -22,6 +22,7 @@ scoring:
     "roc_auc",
     "matthews_corrcoef",
   ]
+log_preprocessing_data: true
 log_models: "best"
 classifier:
   name: "catboost"
