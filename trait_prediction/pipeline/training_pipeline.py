@@ -330,7 +330,10 @@ class TrainingPipeline:
             new_findex = FeatureIndex(findex.name, "float", "float64")
             low_score_features = []
         else:
-            raise ValueError("No feature selection or reduction method specified")
+            feature_data = feature_data
+            new_findex = FeatureIndex(findex.name, findex.ftype, findex.dtype)
+            low_score_features = []
+            components_df = None
         return feature_data, new_findex, low_score_features, components_df
 
     @staticmethod
@@ -396,7 +399,10 @@ class TrainingPipeline:
                 feature_data, phenotype_data, feature.findex, config
             )
         )
-        task_logger.info("Features selected")
+        if not low_score_features and components_df is None:
+            task_logger.info("Skipping feature selection")
+        else:
+            task_logger.info("Feature selection completed")
         phenotype_selected = Phenotype(phenotype_data, phenotype.pindex)
         feature_selected = Feature(feature_data, new_findex)
         # Log the preprocessing data
