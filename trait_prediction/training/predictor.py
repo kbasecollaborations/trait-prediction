@@ -298,7 +298,9 @@ class Predictor:
             y_train = self.training_data.y_train
             X_test = self.training_data.X_test
             y_test = self.training_data.y_test
-            self.classifier.fit(X_train, y_train, eval_set=(X_test, y_test))
+            self.classifier.fit(
+                X_train, y_train, eval_set=(X_test, y_test), use_best_model=True
+            )
         else:
             raise ValueError("Data has not been prepared. Call `split_data` first.")
 
@@ -384,7 +386,9 @@ class Predictor:
             X_train, X_test = X.iloc[train_indices], X.iloc[test_indices]
             y_train, y_test = y.iloc[train_indices], y.iloc[test_indices]
             clf_clone = clone(clf)
-            clf_clone.fit(X_train, y_train, eval_set=(X_test, y_test))  # type: ignore
+            clf_clone.fit(  # type: ignore
+                X_train, y_train, eval_set=(X_test, y_test), use_best_model=True
+            )
             estimators.append(clf_clone)
             for score_name in scoring:
                 scorer = get_scorer(score_name)
