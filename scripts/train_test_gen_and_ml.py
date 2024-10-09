@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 import json
+import multiprocessing as mp
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 import numpy as np
 import pandas as pd
@@ -48,6 +50,7 @@ class TrainTestData:
     y_train: pd.DataFrame
     X_test: pd.DataFrame
     y_test: pd.DataFrame
+    output_folder: Path
 
 
 def index_format_func(x):
@@ -216,7 +219,7 @@ def read_feature_cols(
 
 
 def _make_classifier():
-    clf = RandomForestClassifier(n_estimators=1000, random_state=42, n_jobs=-1)
+    clf = RandomForestClassifier(n_estimators=1000, random_state=42, n_jobs=1)
     return clf
 
 
@@ -296,9 +299,7 @@ def create_train_test_sets(
     n_reps: int,
     test_frac: float,
     output_folder: Path,
-    skip: bool,
-) -> None:
-    data_map = []
+) -> Iterator[TrainTestData]:
     phenotype_names = [p.pindex.name for p in full_dataset.phenotypes]
     for trainset_name, testset_names in train_test_map.items():
         for testset_name in testset_names:
@@ -409,34 +410,37 @@ def create_train_test_sets(
                             y_train=y_train,
                             X_test=X_test,
                             y_test=y_test,
+                            output_folder=output_folder,
                         )
-                        curr_folder = save_train_test_sets(
-                            train_test_data, output_folder, skip
-                        )
-                        scores, feature_importances = train_and_score(train_test_data)
-                        results = {
-                            "feature_name": key.feature_name,
-                            "feature_type": key.feature_type,
-                            "phenotype_name": key.phenotype_name,
-                            "train_set_id": key.train_set_id,
-                            "test_set_id": key.test_set_id,
-                            "rep": rep,
-                            "path": str(curr_folder),
-                            "accuracy": scores["acc"],
-                            "balanced_accuracy": scores["bacc"],
-                            "matthews_corrcoef": scores["mcc"],
-                        }
-                        with open(curr_folder / "results.json", "w") as fid:
-                            fid.write(json.dumps(results))
-                        feature_importances.to_csv(
-                            curr_folder / "feature_importances.tsv",
-                            sep="\t",
-                            index=True,
-                        )
-                        data_map.append(results)
-    with open(output_folder / "data_map.json", "w") as f:
-        json.dump(data_map, f)
-    return None
+                        yield train_test_data
+
+
+def run_task(train_test_data: TrainTestData) -> dict:
+    key = train_test_data.index
+    output_folder = train_test_data.output_folder
+    curr_folder = save_train_test_sets(train_test_data, output_folder, skip=True)
+    scores, feature_importances = train_and_score(train_test_data)
+    results = {
+        "feature_name": key.feature_name,
+        "feature_type": key.feature_type,
+        "phenotype_name": key.phenotype_name,
+        "train_set_id": key.train_set_id,
+        "test_set_id": key.test_set_id,
+        "rep": key.rep,
+        "path": str(curr_folder),
+        "accuracy": scores["acc"],
+        "balanced_accuracy": scores["bacc"],
+        "matthews_corrcoef": scores["mcc"],
+    }
+    # FIXME: There is a bug here, python is also writing to script directory for these two files
+    with open(curr_folder / "results.json", "w") as fid:
+        fid.write(json.dumps(results))
+    feature_importances.to_csv(
+        curr_folder / "feature_importances.tsv",
+        sep="\t",
+        index=True,
+    )
+    return results
 
 
 def save_train_test_sets(
@@ -539,7 +543,7 @@ if __name__ == "__main__":
     )
     # Create train and test sets
     # NOTE: We are not using an eval set
-    create_train_test_sets(
+    task_list = create_train_test_sets(
         full_dataset,
         train_test_map,
         genome_info_df,
@@ -550,5 +554,11 @@ if __name__ == "__main__":
         n_reps=n_reps,
         test_frac=test_frac,
         output_folder=output_folder,
-        skip=True,
     )
+    data_map = []
+    with mp.Pool(processes=20) as pool:
+        results = pool.imap(run_task, task_list)
+        for result in results:
+            data_map.append(result)
+    with open(output_folder / "data_map.json", "w") as f:
+        json.dump(data_map, f)
