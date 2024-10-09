@@ -419,7 +419,7 @@ def create_train_test_sets(
 def run_task(train_test_data: TrainTestData) -> dict:
     key = train_test_data.index
     output_folder = train_test_data.output_folder
-    curr_folder = save_train_test_sets(train_test_data, output_folder, skip=True)
+    curr_folder = save_train_test_sets(train_test_data, output_folder, skip=False)
     scores, feature_importances = train_and_score(train_test_data)
     results = {
         "feature_name": key.feature_name,
