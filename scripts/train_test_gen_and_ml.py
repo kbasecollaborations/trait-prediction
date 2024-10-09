@@ -135,7 +135,7 @@ def load_train_features(
         dataset_names = dataset.split("-")[0].split("+")
         finputs: list[FeatureInput] = []
         for dataset_name in dataset_names:
-            feature_folder = data_folder / f"interim/features/{dataset_name}"
+            feature_folder = data_folder / f"interim/features_mod/{dataset_name}"
             feature_file = feature_folder / f"{feature_representation}.tsv"
             findex = FeatureIndex(name=dataset_name, ftype="binary", dtype="uint8")
             finput = FeatureInput(
@@ -392,6 +392,7 @@ def create_train_test_sets(
                         train_rows = train_indices[rep]
                         test_rows = test_indices[rep]
                         cols = feature_cols[feature_type]
+                        cols.append("dataset")
                         X_train_full = feature_train.feature_data
                         y_train_full = phenotype_train.phenotype_data
                         X_3datasets = feature_3datasets.feature_data
@@ -485,7 +486,7 @@ if __name__ == "__main__":
     np.random.seed(random_seed)
     n_reps = 5
     test_frac = 0.2
-    output_folder = Path("../data/processed/train_test_sets")
+    output_folder = Path("../data/processed/train_test_sets_v2")
     datasets = ["atleaf", "lit", "pmi"]
     datasets_train_all = [
         "atleaf",
