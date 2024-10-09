@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-data_folder = Path("../data/processed/train_test_sets")
+data_folder = Path("../data/processed/train_test_sets_v2")
 
 # Expected # of results
 n_feature_reps = 1
