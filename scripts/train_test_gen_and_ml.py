@@ -76,7 +76,7 @@ def load_phenotypes(
     phenotypes_list: list[Phenotype] = []
     # Find common phenotypes across the datasets
     phenotype_name_sets: list[set[str]] = []
-    for dataset in datasets[:3]:
+    for dataset in ["atleaf", "lit", "pmi"]:
         phenotype_folder = data_folder / f"processed/phenotypes/{dataset}"
         phenotype_name_sets.append({f.stem for f in phenotype_folder.glob("*.tsv")})
     phenotype_names_common = set.intersection(*phenotype_name_sets)
@@ -303,7 +303,7 @@ def create_train_test_sets(
     phenotype_names = [p.pindex.name for p in full_dataset.phenotypes]
     for trainset_name, testset_names in train_test_map.items():
         for testset_name in testset_names:
-            print(f"Creating train/test set for {trainset_name}+{testset_name}")
+            print(f"Creating data set for train({trainset_name})+test({testset_name})")
             for phenotype_name in phenotype_names:
                 pindex_train = PhenotypeIndex(
                     name=phenotype_name, category=trainset_name
@@ -416,10 +416,48 @@ def create_train_test_sets(
                         yield train_test_data
 
 
+def save_train_test_sets(
+    train_test_data: TrainTestData, output_folder: Path, skip: bool
+) -> Path | None:
+    output_folder.mkdir(parents=True, exist_ok=True)
+    key = train_test_data.index
+    feature_name = key.feature_name
+    feature_type = key.feature_type
+    phenotype_name = key.phenotype_name
+    train_set_id = key.train_set_id
+    test_set_id = key.test_set_id
+    rep = key.rep
+    folder_prefix = f"feat({feature_name}_{feature_type})-pheno({phenotype_name})"
+    folder_suffix = f"train({train_set_id})-test({test_set_id})"
+    curr_folder = output_folder / f"{folder_prefix}-{folder_suffix}" / f"{rep}"
+    if skip and curr_folder.is_dir():
+        return None
+    curr_folder.mkdir(parents=True, exist_ok=True)
+    X_train, _, X_test, _ = (
+        train_test_data.X_train,
+        train_test_data.y_train,
+        train_test_data.X_test,
+        train_test_data.y_test,
+    )
+    # NOTE: Saving only the rows and cols
+    train_indices = X_train.index
+    with open(curr_folder / "train_indices.txt", "w") as fid:
+        fid.write("\n".join(train_indices))
+    test_indices = X_test.index
+    with open(curr_folder / "test_indices.txt", "w") as fid:
+        fid.write("\n".join(test_indices))
+    feature_columns = X_train.columns
+    with open(curr_folder / "feature_columns.txt", "w") as fid:
+        fid.write("\n".join(feature_columns))
+    return curr_folder
+
+
 def run_task(train_test_data: TrainTestData) -> dict:
     key = train_test_data.index
     output_folder = train_test_data.output_folder
-    curr_folder = save_train_test_sets(train_test_data, output_folder, skip=False)
+    curr_folder = save_train_test_sets(train_test_data, output_folder, skip=True)
+    if curr_folder is None:
+        return dict()
     scores, feature_importances = train_and_score(train_test_data)
     results = {
         "feature_name": key.feature_name,
@@ -444,42 +482,6 @@ def run_task(train_test_data: TrainTestData) -> dict:
     return results
 
 
-def save_train_test_sets(
-    train_test_data: TrainTestData, output_folder: Path, skip: bool
-) -> Path:
-    output_folder.mkdir(parents=True, exist_ok=True)
-    key = train_test_data.index
-    feature_name = key.feature_name
-    feature_type = key.feature_type
-    phenotype_name = key.phenotype_name
-    train_set_id = key.train_set_id
-    test_set_id = key.test_set_id
-    rep = key.rep
-    folder_prefix = f"feat({feature_name}_{feature_type})-pheno({phenotype_name})"
-    folder_suffix = f"train({train_set_id})-test({test_set_id})"
-    curr_folder = output_folder / f"{folder_prefix}-{folder_suffix}" / f"{rep}"
-    if skip and curr_folder.exists():
-        return Path()
-    curr_folder.mkdir(parents=True, exist_ok=True)
-    X_train, _, X_test, _ = (
-        train_test_data.X_train,
-        train_test_data.y_train,
-        train_test_data.X_test,
-        train_test_data.y_test,
-    )
-    # NOTE: Saving only the rows and cols
-    train_indices = X_train.index
-    with open(curr_folder / "train_indices.txt", "w") as fid:
-        fid.write("\n".join(train_indices))
-    test_indices = X_test.index
-    with open(curr_folder / "test_indices.txt", "w") as fid:
-        fid.write("\n".join(test_indices))
-    feature_columns = X_train.columns
-    with open(curr_folder / "feature_columns.txt", "w") as fid:
-        fid.write("\n".join(feature_columns))
-    return curr_folder
-
-
 if __name__ == "__main__":
     # Parameters
     random_seed = 42
@@ -492,6 +494,8 @@ if __name__ == "__main__":
         "atleaf",
         "lit",
         "pmi",
+        "atleaf-a",
+        "lit-g",
         "atleaf+lit",
         "atleaf+lit-g",
         "atleaf+lit-a",
@@ -510,7 +514,9 @@ if __name__ == "__main__":
     ]
     train_test_map = {
         "atleaf": ["in_abb", "lit", "out_gamma", "pmi", "uniform"],
+        "atleaf-a": ["in_abb", "lit", "out_alpha", "out_gamma", "pmi", "uniform"],
         "lit": ["atleaf", "in_abb", "out_alpha", "pmi", "uniform"],
+        "lit-g": ["atleaf", "in_abb", "out_alpha", "out_gamma", "pmi", "uniform"],
         "atleaf+lit": ["in_abb", "pmi", "uniform"],
         "atleaf+lit-g": ["out_gamma", "pmi", "uniform"],
         "atleaf+lit-a": ["out_alpha", "pmi", "uniform"],
