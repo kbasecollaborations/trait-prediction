@@ -248,12 +248,29 @@ def train_and_score(
     )
     if X_train.shape[0] < 50:
         return default_scores, pd.Series()
+    # Class counts
+    train_class0_count = np.sum(y_train == 0)
+    train_class1_count = np.sum(y_train == 1)
+    test_class0_count = np.sum(y_test == 0)
+    test_class1_count = np.sum(y_test == 1)
+    if min(train_class0_count, train_class1_count) < 10:
+        return default_scores, pd.Series()
+    # Train
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
+    # Scores
     acc = accuracy_score(y_test, y_pred)
     bacc = balanced_accuracy_score(y_test, y_pred)
     mcc = matthews_corrcoef(y_test, y_pred)
-    scores = {"acc": acc, "bacc": bacc, "mcc": mcc}
+    scores = {
+        "acc": acc,
+        "bacc": bacc,
+        "mcc": mcc,
+        "train_class0_count": train_class0_count,
+        "train_class1_count": train_class1_count,
+        "test_class0_count": test_class0_count,
+        "test_class1_count": test_class1_count,
+    }
     feature_importances = _get_feature_importances(clf)
     return scores, feature_importances
 
