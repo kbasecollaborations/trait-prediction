@@ -76,7 +76,9 @@ def load_phenotypes(
     phenotypes_list: list[Phenotype] = []
     # Find common phenotypes across the datasets
     phenotype_name_sets: list[set[str]] = []
-    for dataset in ["atleaf", "lit", "pmi"]:
+    for dataset in datasets:
+        if dataset not in ["atleaf", "lit", "pmi", "marine"]:
+            continue
         phenotype_folder = data_folder / f"processed/phenotypes/{dataset}"
         phenotype_name_sets.append({f.stem for f in phenotype_folder.glob("*.tsv")})
     phenotype_names_common = set.intersection(*phenotype_name_sets)
@@ -239,20 +241,28 @@ def train_and_score(
     train_test_data: TrainTestData,
 ) -> tuple[dict[str, float], pd.Series]:
     clf = _make_classifier()
-    default_scores = {"acc": -1.0, "bacc": -1.0, "mcc": -1.0}
     X_train, y_train, X_test, y_test = (
         train_test_data.X_train,
         train_test_data.y_train,
         train_test_data.X_test,
         train_test_data.y_test,
     )
+    # Class counts
+    train_class0_count = int(np.sum(y_train == 0))
+    train_class1_count = int(np.sum(y_train == 1))
+    test_class0_count = int(np.sum(y_test == 0))
+    test_class1_count = int(np.sum(y_test == 1))
+    default_scores = {
+        "acc": -1.0,
+        "bacc": -1.0,
+        "mcc": -1.0,
+        "train_class0_count": train_class0_count,
+        "train_class1_count": train_class1_count,
+        "test_class0_count": test_class0_count,
+        "test_class1_count": test_class1_count,
+    }
     if X_train.shape[0] < 50:
         return default_scores, pd.Series()
-    # Class counts
-    train_class0_count = np.sum(y_train == 0)
-    train_class1_count = np.sum(y_train == 1)
-    test_class0_count = np.sum(y_test == 0)
-    test_class1_count = np.sum(y_test == 1)
     if min(train_class0_count, train_class1_count) < 10:
         return default_scores, pd.Series()
     # Train
@@ -331,17 +341,21 @@ def create_train_test_sets(
                 phenotype_train, feature_train = full_dataset.get_data(
                     pindex_train, findex_train
                 )
+                if "marine" in train_test_map:
+                    alldataset_index = "atleaf+lit+pmi+marine"
+                else:
+                    alldataset_index = "atleaf+lit+pmi"
                 pindex_3datasets = PhenotypeIndex(
-                    name=phenotype_name, category="atleaf+lit+pmi"
+                    name=phenotype_name, category=alldataset_index
                 )
                 findex_3datasets = FeatureIndex(
-                    name="atleaf+lit+pmi", ftype="binary", dtype="uint8"
+                    name=alldataset_index, ftype="binary", dtype="uint8"
                 )
                 phenotype_3datasets, feature_3datasets = full_dataset.get_data(
                     pindex_3datasets, findex_3datasets
                 )
                 # TODO: Refactor this to a new function
-                if testset_name in ["atleaf", "lit", "pmi"]:
+                if testset_name in ["atleaf", "lit", "pmi", "marine"]:
                     pindex_test = PhenotypeIndex(
                         name=phenotype_name, category=testset_name
                     )
@@ -368,9 +382,13 @@ def create_train_test_sets(
                     class_index = _get_class_indices(
                         genome_info_df, ["Bacilli", "Bacteroidia", "Actinomycetia"]
                     )
-                    indices_to_sample = (
-                        feature_3datasets.feature_data.index.intersection(class_index)
-                    )
+                    if trainset_name in ["lit", "atleaf", "atleaf+lit"]:
+                        df_to_sample = feature_train.feature_data
+                    else:
+                        raise ValueError(
+                            f"Unknown trainset for in_abb: {trainset_name}"
+                        )
+                    indices_to_sample = df_to_sample.index.intersection(class_index)
                 elif testset_name == "uniform":
                     indices_to_sample = _get_uniform_indices(
                         feature_3datasets.feature_data, distance_df, n_reps, test_frac
@@ -408,8 +426,7 @@ def create_train_test_sets(
                         )
                         train_rows = train_indices[rep]
                         test_rows = test_indices[rep]
-                        cols = feature_cols[feature_type]
-                        cols.append("dataset")
+                        cols = feature_cols[feature_type] + ["dataset"]
                         X_train_full = feature_train.feature_data
                         y_train_full = phenotype_train.phenotype_data
                         X_3datasets = feature_3datasets.feature_data
@@ -487,6 +504,10 @@ def run_task(train_test_data: TrainTestData) -> dict:
         "accuracy": scores["acc"],
         "balanced_accuracy": scores["bacc"],
         "matthews_corrcoef": scores["mcc"],
+        "train_class0_count": scores["train_class0_count"],
+        "train_class1_count": scores["train_class1_count"],
+        "test_class0_count": scores["test_class0_count"],
+        "test_class1_count": scores["test_class1_count"],
     }
     # FIXME: There is a bug here, python is also writing to script directory for these two files
     with open(curr_folder / "results.json", "w") as fid:
