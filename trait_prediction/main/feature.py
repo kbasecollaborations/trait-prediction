@@ -184,7 +184,8 @@ class Feature:
             0
         )
         if len(set([feature.findex.name for feature in features])) > 1:
-            raise ValueError("The features must have the same name")
+            # raise ValueError("The features must have the same name")
+            warn("The features have different names")
         findex = FeatureIndex(
             name=features[0].findex.name,
             ftype=features[0].findex.ftype,
