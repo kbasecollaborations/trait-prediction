@@ -2,6 +2,7 @@
 
 import json
 import multiprocessing as mp
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
@@ -23,6 +24,55 @@ from trait_prediction.main import (
     PhenotypeInput,
     PhenotypeSet,
 )
+
+warnings.filterwarnings("ignore")
+
+DATASETS = ["atleaf", "lit", "pmi", "marine"]
+DATASETS_TRAIN_ALL = [
+    # single
+    "atleaf",
+    "lit",
+    "pmi",
+    "marine",
+    # double
+    "atleaf+lit",
+    "atleaf+pmi",
+    "lit+pmi",
+    "marine+atleaf",
+    "marine+lit",
+    "marine+pmi",
+    # triple
+    "atleaf+lit+pmi",
+    "marine+atleaf+lit",
+    "marine+atleaf+pmi",
+    "marine+lit+pmi",
+    # quadruple
+    "atleaf+lit+pmi+marine",
+]
+DATASETS_TEST_ALL = [
+    "atleaf",
+    "lit",
+    "pmi",
+    "marine",
+]
+TRAIN_TEST_MAP = {
+    # single
+    "atleaf": ["lit", "pmi", "marine"],
+    "lit": ["atleaf", "pmi", "marine"],
+    "marine": ["atleaf", "pmi", "lit"],
+    # double
+    "atleaf+lit": ["pmi", "marine"],
+    "atleaf+pmi": ["lit", "marine"],
+    "lit+pmi": ["atleaf", "marine"],
+    "marine+atleaf": ["lit", "pmi"],
+    "marine+lit": ["atleaf", "pmi"],
+    "marine+pmi": ["atleaf", "lit"],
+    # triple
+    "atleaf+lit+pmi": ["marine"],
+    "marine+atleaf+lit": ["pmi"],
+    "marine+atleaf+pmi": ["lit"],
+    "marine+lit+pmi": ["atleaf"],
+}
 
 
 @dataclass(frozen=True)
@@ -526,48 +576,19 @@ if __name__ == "__main__":
     np.random.seed(random_seed)
     n_reps = 5
     test_frac = 0.2
-    output_folder = Path("../data/processed/train_test_sets_v2")
-    datasets = ["atleaf", "lit", "pmi"]
-    datasets_train_all = [
-        "atleaf",
-        "lit",
-        "pmi",
-        "atleaf-a",
-        "lit-g",
-        "atleaf+lit",
-        "atleaf+lit-g",
-        "atleaf+lit-a",
-        "atleaf+lit+pmi",
-        "atleaf+lit+pmi-g",
-        "atleaf+lit+pmi-a",
-    ]
-    datasets_test_all = [
-        "atleaf",
-        "lit",
-        "pmi",
-        "out_gamma",
-        "out_alpha",
-        "in_abb",
-        "uniform",
-    ]
-    train_test_map = {
-        "atleaf": ["in_abb", "lit", "out_gamma", "pmi", "uniform"],
-        "atleaf-a": ["in_abb", "lit", "out_alpha", "out_gamma", "pmi", "uniform"],
-        "lit": ["atleaf", "in_abb", "out_alpha", "pmi", "uniform"],
-        "lit-g": ["atleaf", "in_abb", "out_alpha", "out_gamma", "pmi", "uniform"],
-        "atleaf+lit": ["in_abb", "pmi", "uniform"],
-        "atleaf+lit-g": ["out_gamma", "pmi", "uniform"],
-        "atleaf+lit-a": ["out_alpha", "pmi", "uniform"],
-        "atleaf+lit+pmi": ["uniform"],
-        "atleaf+lit+pmi-g": ["out_gamma", "uniform"],
-        "atleaf+lit+pmi-a": ["out_alpha", "uniform"],
-    }
+    # NOTE: Change this to the folder where you want to save the results
+    output_folder = Path("../data/processed/train_test_w_marine")
+    datasets = DATASETS
+    datasets_train_all = DATASETS_TRAIN_ALL
+    datasets_test_all = DATASETS_TEST_ALL
+    train_test_map = TRAIN_TEST_MAP
     # Pairwise distance data
     distance_matrix_file = Path("../data/processed/distance_matrix.tsv")
     distance_df = pd.read_csv(distance_matrix_file, sep="\t", index_col=0)
     # NOTE: Final folder feat(kofam_full)-pheno(Alanine)-train(atleaf+lit)-test(in_abb)
     feature_representation = "kofam"
-    feature_types = ["full", "nocorr", "sel"]
+    # feature_types = ["full", "nocorr", "sel"]
+    feature_types = ["full"]
     data_folder = Path("../data")
     # Data loading functions
     genome_info_df = get_genome_info(data_folder)

@@ -37,5 +37,5 @@ def main(
 if __name__ == "__main__":
     data_folder = Path("../data/interim/features")
     output_folder = Path("../data/interim/features_mod/")
-    dataset_id_map = {"atleaf": 0, "lit": 1, "pmi": 2}
+    dataset_id_map = {"atleaf": 0, "lit": 1, "pmi": 2, "marine": 3}
     main(data_folder, dataset_id_map, output_folder)
