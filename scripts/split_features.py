@@ -43,7 +43,9 @@ def split_features(
         feature = Feature.read_data(feature_input)
         feature_data = feature.feature_data
         for dataset, genomeids in genomeid_map.items():
-            feature_data_subset = feature_data.loc[genomeids]
+            print(f"Splitting {feature_name} for {dataset}")
+            common_genomeids = list(set(genomeids).intersection(feature_data.index))
+            feature_data_subset = feature_data.loc[common_genomeids]
             output_file = output_folder / f"{dataset}/{feature_name}.tsv"
             interim_output_folder = output_file.parent
             if not interim_output_folder.exists():
@@ -55,6 +57,18 @@ if __name__ == "__main__":
     input_folder = Path("../data/raw/features/biolog/")
     phenotypes_folder = Path("../data/raw/phenotypes")
     output_folder = Path("../data/interim/features")
-    feature_name_subset = ["kofam"]
+    # feature_name_subset = ["rast"]
+    feature_name_subset = [
+        "eggnog_kegg",
+        "eggnog_seed",
+        "kofam",
+        "kofam_modules",
+        "rast",
+        "uniprot_trembl",
+        "uniref30",
+        "uniref50",
+        "uniref70",
+        "uniref90",
+    ]
     genomeid_map = get_genomeids_from_phenotypes(phenotypes_folder)
     split_features(input_folder, output_folder, genomeid_map, feature_name_subset)
