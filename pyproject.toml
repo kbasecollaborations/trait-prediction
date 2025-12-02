@@ -1,12 +1,12 @@
 [project]
 name = "trait-prediction"
 version = "0.2.2"
-description = ""
+description = "The pipeline to predict traits from genomic data using machine learning techniques."
 authors = [
     {name = "Dileep Kishore", email = "k.dileep1994@gmail.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12,<=3.14"
 dependencies = [
     "pandas>=2.2.3",
     "scikit-learn>=1.3.0",
