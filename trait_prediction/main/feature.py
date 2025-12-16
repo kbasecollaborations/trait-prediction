@@ -230,7 +230,10 @@ class Feature:
 
     @staticmethod
     def remove_features_with_high_correlation(
-        feature_df: pd.DataFrame, threshold: float = 0.95, parallel: bool = False
+        feature_df: pd.DataFrame,
+        threshold: float = 0.95,
+        parallel: bool = False,
+        method: str = "pearson",
     ) -> tuple[pd.DataFrame, dict[str, list[str]]]:
         """
         Removes features with high correlation from the given feature DataFrame.
@@ -245,6 +248,9 @@ class Feature:
         parallel : bool
             Whether to use parallel computation.
             Default value is False
+        method : str
+            Correlation method to use. Supported values are 'pearson' and 'spearman'.
+            Default value is 'pearson'
 
         Returns
         ------
@@ -255,7 +261,7 @@ class Feature:
         """
         # Get correlated columns
         graph_corr = GraphCorrelationFilter(
-            feature_df, threshold=threshold, parallel=parallel
+            feature_df, threshold=threshold, parallel=parallel, method=method
         )
         # Find columns to drop
         corr_group_dict = graph_corr.find_corr_cols()
