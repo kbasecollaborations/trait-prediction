@@ -140,9 +140,11 @@ class Feature:
             final_dtype = "uint8"
         elif ftype == "count":
             final_dtype = "uint32"
+        elif ftype == "int":
+            final_dtype = "int32"
         else:
             raise ValueError(
-                f"Invalid feature type: {ftype}, must be 'count', 'float' or 'binary'"
+                f"Invalid feature type: {ftype}, must be 'count', 'float', 'int' or 'binary'"
             )
         # NOTE: We use Float64 while reading the data so that it is faster
         for col in header[1:]:
