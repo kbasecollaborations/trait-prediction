@@ -1,4 +1,7 @@
-"""Module that contains functions for filtering features using correlation threshold"""
+"""Module that contains functions for filtering features using correlation threshold.
+
+Supports both Pearson and Spearman correlation methods.
+"""
 
 from typing import Iterator
 
@@ -77,42 +80,134 @@ def _argwhere(pc_mat: np.ndarray, threshold: float) -> np.ndarray:
     return np.argwhere(np.triu(pc_mat, 1) >= threshold)
 
 
+@njit
+def _rank_row(row: np.ndarray) -> np.ndarray:
+    """Rank a single row with average tie-breaking."""
+    n = len(row)
+    # Get indices that would sort the array
+    order = np.argsort(row)
+    ranks = np.empty(n, dtype=np.float64)
+
+    i = 0
+    while i < n:
+        j = i
+        # Find all elements equal to current element
+        while j < n - 1 and row[order[j]] == row[order[j + 1]]:
+            j += 1
+        # Average rank for ties
+        rank_sum = 0.0
+        for k in range(i, j + 1):
+            rank_sum += k + 1  # ranks are 1-indexed
+        avg_rank = rank_sum / (j - i + 1)
+        # Assign average rank to all tied elements
+        for k in range(i, j + 1):
+            ranks[order[k]] = avg_rank
+        i = j + 1
+
+    return ranks
+
+
+@njit
+def _rank_rows(x: np.ndarray) -> np.ndarray:
+    """Rank each row of the matrix."""
+    m, n = x.shape
+    ranked = np.empty((m, n), dtype=np.float64)
+    for i in range(m):
+        ranked[i] = _rank_row(x[i])
+    return ranked
+
+
+@njit(parallel=True)
+def _rank_rows_par(x: np.ndarray) -> np.ndarray:
+    """Rank each row of the matrix in parallel."""
+    m, n = x.shape
+    ranked = np.empty((m, n), dtype=np.float64)
+    for i in prange(m):
+        ranked[i] = _rank_row(x[i])
+    return ranked
+
+
+@njit
+def _spearman_correlation_coefficient(x: np.ndarray) -> np.ndarray:
+    """Calculate Spearman correlation coefficient matrix.
+
+    Spearman correlation is Pearson correlation applied to ranked data.
+    """
+    ranked = _rank_rows(x)
+    m, n = ranked.shape[0], ranked.shape[1]
+    ranked_tilde = _tilde(ranked, m)
+    scc = ranked_tilde @ ranked_tilde.T / n
+    np.fill_diagonal(scc, 1.0)
+    return scc
+
+
+@njit
+def _spearman_correlation_coefficient_par(x: np.ndarray) -> np.ndarray:
+    """Calculate Spearman correlation coefficient matrix in parallel.
+
+    Spearman correlation is Pearson correlation applied to ranked data.
+    """
+    ranked = _rank_rows_par(x)
+    m, n = ranked.shape[0], ranked.shape[1]
+    ranked_tilde = _tilde_par(ranked, m)
+    scc = ranked_tilde @ ranked_tilde.T / n
+    np.fill_diagonal(scc, 1.0)
+    return scc
+
+
 class GraphCorrelationFilter:
     def __init__(
-        self, df: pd.DataFrame, threshold: float, parallel: bool = False
+        self,
+        df: pd.DataFrame,
+        threshold: float,
+        parallel: bool = False,
+        method: str = "pearson",
     ) -> None:
         self._df = df
         self._features = list(df.columns)
-        self._graph = self._create_graph(df, threshold, parallel)
+        self._graph = self._create_graph(df, threshold, parallel, method)
         self._ready = True
 
     @staticmethod
-    def _create_graph(df: pd.DataFrame, threshold: float, parallel: bool) -> nx.Graph:
-        """Create a graph from the given DataFrame using the Pearson correlation coefficient.
+    def _create_graph(
+        df: pd.DataFrame, threshold: float, parallel: bool, method: str
+    ) -> nx.Graph:
+        """Create a graph from the given DataFrame using correlation coefficient.
 
         Parameters
         ----------
         df : pd.DataFrame
             The DataFrame containing the data.
         threshold : float
-            The threshold for the Pearson correlation coefficient.
+            The threshold for the correlation coefficient.
         parallel : bool
             Whether to use parallel computation.
+        method : str
+            The correlation method to use ("pearson" or "spearman").
 
         Returns
         -------
         nx.Graph
             The graph.
         """
-        if parallel:
-            pcc_func = _pearson_correlation_coefficient_par
+        if method == "pearson":
+            if parallel:
+                corr_func = _pearson_correlation_coefficient_par
+            else:
+                corr_func = _pearson_correlation_coefficient
+        elif method == "spearman":
+            if parallel:
+                corr_func = _spearman_correlation_coefficient_par
+            else:
+                corr_func = _spearman_correlation_coefficient
         else:
-            pcc_func = _pearson_correlation_coefficient
-        pc_mat = pcc_func(df.transpose().to_numpy())
-        assert pc_mat.shape[0] == len(df.columns)
-        assert pc_mat.shape[1] == len(df.columns)
+            raise ValueError(f"Unknown correlation method: {method}")
+
+        corr_mat = corr_func(df.transpose().to_numpy())
+        assert corr_mat.shape[0] == len(df.columns)
+        assert corr_mat.shape[1] == len(df.columns)
         graph = nx.Graph()
-        for c in _argwhere(pc_mat, threshold):
+        for c in _argwhere(corr_mat, threshold):
             graph.add_edge(c[0], c[1])
         return graph
 
