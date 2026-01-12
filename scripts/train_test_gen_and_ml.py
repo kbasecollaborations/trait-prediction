@@ -10,9 +10,9 @@ from typing import Iterator
 import numpy as np
 import pandas as pd
 from sklearn.cluster import AgglomerativeClustering
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, matthews_corrcoef
 
+from trait_prediction.classifiers import make_classifier
 from trait_prediction.main import (
     DataSet,
     Feature,
@@ -24,6 +24,7 @@ from trait_prediction.main import (
     PhenotypeInput,
     PhenotypeSet,
 )
+from trait_prediction.pipeline import get_feature_importances
 
 warnings.filterwarnings("ignore")
 
@@ -270,27 +271,13 @@ def read_feature_cols(
     return selected_feat_map
 
 
-def _make_classifier():
-    clf = RandomForestClassifier(n_estimators=1000, random_state=42, n_jobs=1)
-    return clf
-
-
-def _get_feature_importances(clf, n: int = 100) -> pd.Series:
-    feature_importances = clf.feature_importances_
-    feature_importances = (
-        pd.Series(feature_importances, index=clf.feature_names_in_)
-        .sort_values(ascending=False)
-        .head(n)
-    )
-    feature_importances.name = "Importance"
-    feature_importances.index.name = "Feature"
-    return feature_importances
 
 
 def train_and_score(
     train_test_data: TrainTestData,
 ) -> tuple[dict[str, float], pd.Series]:
-    clf = _make_classifier()
+    # Use the make_classifier factory from trait_prediction
+    clf = make_classifier("rf", random_state=42, n_jobs=1)
     X_train, y_train, X_test, y_test = (
         train_test_data.X_train,
         train_test_data.y_train,
@@ -331,7 +318,8 @@ def train_and_score(
         "test_class0_count": test_class0_count,
         "test_class1_count": test_class1_count,
     }
-    feature_importances = _get_feature_importances(clf)
+    # Use get_feature_importances from trait_prediction
+    feature_importances = get_feature_importances(clf, X_train, n_features=100)
     return scores, feature_importances
 
 
