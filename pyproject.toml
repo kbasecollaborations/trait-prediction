@@ -1,6 +1,6 @@
 [project]
 name = "trait-prediction"
-version = "0.3.0"
+version = "0.4.0"
 description = "The pipeline to predict traits from genomic data using machine learning techniques."
 authors = [
     {name = "Dileep Kishore", email = "k.dileep1994@gmail.com"}
