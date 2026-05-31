@@ -533,8 +533,7 @@ wheels = [
 [[package]]
 name = "ete3"
 version = "3.1.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/cf/59/f26e8bfab088a3989bf1f61b836637039758a22df2d9fc6be491c5a6ccef/ete3-3.1.3.tar.gz", hash = "sha256:06a3b7fa8ed90187b076a8dbbe5b1b62acee94201d3c6e822f55f449601ef6f2", size = 4768608, upload-time = "2023-05-02T09:47:21.01Z" }
+source = { git = "https://github.com/etetoolkit/ete.git?rev=ete3#6779ae7e9e4a9fb999f3d5a966fa0c05cb35313f" }
 
 [[package]]
 name = "executing"
@@ -2854,7 +2853,7 @@ dev = [
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=23.7.0" },
     { name = "catboost", specifier = ">=1.2.1" },
-    { name = "ete3", specifier = ">=3.1.3" },
+    { name = "ete3", git = "https://github.com/etetoolkit/ete.git?rev=ete3" },
     { name = "fuzzywuzzy", specifier = ">=0.18.0" },
     { name = "hydra-core", specifier = ">=1.3.2" },
     { name = "imblearn", specifier = ">=0.0" },

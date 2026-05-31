@@ -45,3 +45,6 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv.sources]
+ete3 = { git = "https://github.com/etetoolkit/ete.git", rev = "ete3" }
