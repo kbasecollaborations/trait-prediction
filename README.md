@@ -42,7 +42,10 @@ via `ConfigSet`; the `run_script.py` entry point loads these with
 [Hydra](https://hydra.cc/).
 
 Run the test suite with `just test` (or `uv run --extra dev pytest`; `pytest`
-lives in the optional `dev` extra).
+lives in the optional `dev` extra). The suite is intentionally minimal and fast
+(a few seconds) — it covers the core data model, classifiers, splitters,
+split-level ML utilities, and config loading rather than the full training
+orchestration. CI runs it on Python 3.12 and 3.13.
 
 ## Package layout
 
