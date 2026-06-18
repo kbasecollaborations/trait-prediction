@@ -218,13 +218,15 @@ class OutOfCladeSplitter(DataSplitter):
         for _ in range(self.timeout_iterations):
             if self.prefer_small_clade:
                 n_clades = self._rng.integers(1, self.n_max_clade + 1)
-                clades = self._rng.choice(
-                    self.single_clades[1:], size=n_clades, replace=False
-                ).tolist()
+                pool = self.single_clades[1:]
+                indices = self._rng.choice(len(pool), size=n_clades, replace=False)
+                clades = [pool[i] for i in indices]
             else:
-                clades = self._rng.choice(
-                    self.single_clades, size=self.n_max_clade, replace=False
-                ).tolist()
+                pool = self.single_clades
+                indices = self._rng.choice(
+                    len(pool), size=self.n_max_clade, replace=False
+                )
+                clades = [pool[i] for i in indices]
 
             test_samples = reduce(np.union1d, clades)
 
