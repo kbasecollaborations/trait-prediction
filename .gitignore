@@ -181,3 +181,8 @@ devenv.local.nix
 
 # Runs
 runs/
+
+# Cleanup (v0.4.1): keep personal/editor/sync files out of the public repo
+cades_rsync.sh
+.vscode/
+.stfolder/
