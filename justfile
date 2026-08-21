@@ -2,7 +2,7 @@ alias t := test
 alias tv := test_verbose
 
 test:
-    pytest
+    uv run --extra dev pytest
 
 test_verbose:
-    pytest -svv
+    uv run --extra dev pytest -svv
