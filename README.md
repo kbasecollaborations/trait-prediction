@@ -84,9 +84,9 @@ this repository.
 
 If you use this library, please cite the preprint:
 
-> Kishore D, Ranjan P, Neely C, Cashman M, Riehl W, Joachimiak MP, Edirisinghe JN,
-> Faria JP, Cohen MB, Sakkaff Z, Weisenhorn P, Pelletier DA, Doktycz MJ,
-> Cottingham RW, Henry CS, Arkin AP, Dehal PS. *Data coherence over data volume
+> Kishore D, Ranjan P, Neely C, Cashman M, Sakkaff Z, Riehl WJ, Joachimiak MP,
+> Edirisinghe JN, Faria JP, Weisenhorn P, Cohen MB, Pelletier DA, Cottingham RW,
+> Henry CS, Doktycz MJ, Arkin AP, Dehal PS. *Data coherence over data volume
 > drives generalisable genome-based prediction of microbial carbon utilisation.*
 > bioRxiv 2026.08.06.743333 (2026). <https://doi.org/10.64898/2026.08.06.743333>
 
@@ -95,11 +95,12 @@ If you use this library, please cite the preprint:
   title   = {Data coherence over data volume drives generalisable genome-based
              prediction of microbial carbon utilisation},
   author  = {Kishore, Dileep and Ranjan, Priya and Neely, Christopher and
-             Cashman, Mikaela and Riehl, William and Joachimiak, Marcin P. and
-             Edirisinghe, Janaka N. and Faria, Jos{\'e} P. and Cohen, Myra B. and
-             Sakkaff, Zahmeeth and Weisenhorn, Pamela and Pelletier, Dale A. and
-             Doktycz, Mitchel J. and Cottingham, Robert W. and Henry, Christopher S.
-             and Arkin, Adam P. and Dehal, Paramvir S.},
+             Cashman, Mikaela and Sakkaff, Zahmeeth and Riehl, William J. and
+             Joachimiak, Marcin P. and Edirisinghe, Janaka N. and
+             Faria, Jos{\'e} P. and Weisenhorn, Pamela and Cohen, Myra B. and
+             Pelletier, Dale A. and Cottingham, Robert W. and
+             Henry, Christopher S. and Doktycz, Mitchel J. and
+             Arkin, Adam P. and Dehal, Paramvir S.},
   journal = {bioRxiv},
   year    = {2026},
   doi     = {10.64898/2026.08.06.743333},
